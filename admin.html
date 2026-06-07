@@ -1127,4 +1127,113 @@ async function renderDayDetail(ajandaData){
   const evs=ajanda.filter(a=>a.date===calSelected).sort((a,b)=>(a.saat||'').localeCompare(b.saat||''));
   const el=document.getElementById('dayPlans');
   if(!evs.length){el.innerHTML='<div style="font-size:.75rem;color:var(--dim);text-align:center;padding:10px">Bu gün plan yok</div>';return;}
-  el.innerHTML
+  el.innerHTML=evs.map(e=>`
+    <div class="plan-row">
+      <div class="plan-time">${e.saat||'--:--'}</div>
+      <div class="plan-info">
+        <div class="plan-title">${TUR_ICONS2[e.tur]||'&#128204;'} ${e.baslik||''}</div>
+        ${e.konum?`<div class="plan-sub">${e.konum}</div>`:''}
+        ${e.not?`<div class="plan-sub">${e.not}</div>`:''}
+      </div>
+      <button class="icon-btn del" onclick="ajandaSil('${e.id}')">x</button>
+    </div>`).join('');
+}
+
+async function ajandaEkle(){
+  const baslik=document.getElementById('ajBaslik').value.trim();
+  if(!baslik){toast('Baslik zorunlu');return;}
+  const plan={
+    id:Date.now()+'',
+    date:calSelected,
+    baslik,
+    saat:document.getElementById('ajSaat').value,
+    tur:document.getElementById('ajTur').value,
+    konum:document.getElementById('ajKonum').value,
+    musteri:document.getElementById('ajMusteri').value,
+    not:document.getElementById('ajNot').value,
+    addedAt:new Date().toISOString()
+  };
+  const fb=FB();
+  if(fb.firebaseReady){
+    try{await fb.addDoc(fb.collection(fb.db,'ajanda'),{...plan,addedAt:fb.serverTimestamp()});}
+    catch(e){const l=LS.get('bk_ajanda',[]);l.push(plan);LS.set('bk_ajanda',l);}
+  }else{
+    const l=LS.get('bk_ajanda',[]);l.push(plan);LS.set('bk_ajanda',l);
+  }
+  ['ajBaslik','ajSaat','ajKonum','ajNot'].forEach(id=>document.getElementById(id).value='');
+  await renderCalendar();toast('Plan eklendi');
+}
+
+async function ajandaSil(id){
+  if(!confirm('Silinsin mi?'))return;
+  const fb=FB();
+  if(fb.firebaseReady){try{await fb.deleteDoc(fb.doc(fb.db,'ajanda',id));}catch(e){}}
+  else LS.set('bk_ajanda',LS.get('bk_ajanda',[]).filter(a=>a.id!==id));
+  await renderCalendar();toast('Silindi');
+}
+
+async function initAjanda(){
+  const sel=document.getElementById('ajMusteri');
+  const custs=await getCusts();
+  sel.innerHTML='<option value="">Musteri secilmedi</option>'+custs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  await renderCalendar();
+}
+async function calToday(){calYear=new Date().getFullYear();calMonth=new Date().getMonth();calSelected=new Date().toISOString().split('T')[0];await renderCalendar();}
+async function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}await renderCalendar();}
+async function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}await renderCalendar();}
+
+async function renderDashboard(){
+  const [custs,gallery,teklifler]=await Promise.all([getCusts(),getGallery(),getTeklifler()]);
+  const upcoming=custs.map(c=>({c,i:getAnnivInfo(c.date)})).filter(x=>x.i&&x.i.diff<=30).sort((a,b)=>a.i.diff-b.i.diff);
+  const yeni=teklifler.filter(t=>!t.durum||t.durum==='yeni');
+  document.getElementById('dCust').textContent=custs.length;
+  document.getElementById('dPhoto').textContent=gallery.length;
+  document.getElementById('dAnniv').textContent=upcoming.length;
+  document.getElementById('dTeklif').textContent=yeni.length;
+  document.getElementById('dAnnivList').innerHTML=upcoming.length?upcoming.slice(0,5).map(x=>`<div class="list-item"><div class="li-body"><div class="li-title">${x.c.name}</div><div class="li-anniv gold">${annivLabel(x.i).txt}</div></div></div>`).join(''):'<div class="empty-state"><span class="empty-txt">Henuz yok</span></div>';
+  document.getElementById('dTeklifList').innerHTML=yeni.length?yeni.slice(0,5).map(t=>`<div class="list-item"><div class="li-body"><div class="li-title">${t.ad||'Isimsiz'}</div><div class="li-sub">${t.tel||''}</div></div></div>`).join(''):'<div class="empty-state"><span class="empty-txt">Henuz yok</span></div>';
+}
+
+async function updateBadges(){
+  const [custs,teklifler]=await Promise.all([getCusts(),getTeklifler()]);
+  const urgent=custs.filter(c=>{const i=getAnnivInfo(c.date);return i&&i.diff<=7;}).length;
+  const yeni=teklifler.filter(t=>!t.durum||t.durum==='yeni').length;
+  const crm=document.getElementById('badgeCRM'),tek=document.getElementById('badgeTekliflerTab');
+  crm.style.display=urgent?'flex':'none';crm.textContent=urgent;
+  tek.style.display=yeni?'flex':'none';tek.textContent=yeni;
+}
+
+async function openContractFor(id){
+  const c=id?(await getCusts()).find(x=>x.id===id):null;
+  document.getElementById('ctName').value=c?.name||'';
+  document.getElementById('ctPhone').value=c?.phone||'';
+  document.getElementById('ctDate').value=c?.date||'';
+  document.getElementById('ctContractDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('contractDoc').innerHTML='';
+  openOverlay('contractOverlay');
+}
+function renderContract(){
+  const name=document.getElementById('ctName').value.trim();
+  if(!name){toast('Musteri adi zorunlu');return;}
+  const type=document.getElementById('ctType').value,date=document.getElementById('ctDate').value;
+  document.getElementById('contractDoc').innerHTML=`<div class="contract-doc"><h2>KVKK Aydinlatma ve Onay Metni</h2><p><strong>${name}</strong>, ${type} organizasyonu kapsaminda paylastigi iletisim ve organizasyon bilgilerinin hizmetin yurutulmesi amaciyla islenmesini kabul eder.</p><p>Organizasyon tarihi: ${date||'-'}</p><p>Sozlesme tarihi: ${document.getElementById('ctContractDate').value||'-'}</p></div>`;
+}
+function printContract(){if(!document.getElementById('contractDoc').innerHTML)renderContract();window.print();}
+
+async function initApp(){
+  updateFBStatus();
+  await Promise.all([renderDashboard(),renderCRM(),renderGallery(),renderMuz(),renderTeklifler(),updateBadges()]);
+}
+window._appReady=()=>{updateFBStatus();if(document.getElementById('app').classList.contains('visible'))initApp();};
+window.addEventListener('load',()=>{
+  const sess=LS.get('bk_session',0);
+  if(sess&&(Date.now()-sess)<86400000){
+    document.getElementById('loginWrap').classList.add('gone');
+    document.getElementById('app').classList.add('visible');
+    initApp();
+  }
+  setTimeout(updateFBStatus,1200);
+});
+</script>
+</body>
+</html>
