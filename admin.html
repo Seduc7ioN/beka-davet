@@ -720,6 +720,20 @@ function showApp(){
   if(typeof initApp==='function')initApp();
   else{const t=setInterval(()=>{if(typeof initApp==='function'){clearInterval(t);initApp();}},200);}
 }
+async function ensureAdminAuth(){
+  const fb=FB();
+  if(window._authUser||fb.auth?.currentUser)return true;
+  if(fb.authReady){
+    await new Promise(resolve=>{
+      const done=()=>resolve();
+      window.addEventListener('authready',done,{once:true});
+      setTimeout(done,1500);
+    });
+  }
+  if(window._authUser||fb.auth?.currentUser)return true;
+  toast('Medya yuklemek icin Firebase admin girisi gerekir. Cikis yapip tekrar girin.',4200);
+  return false;
+}
 
 // ══ AUTH ══
 async function loginClick(){
@@ -929,6 +943,7 @@ function addUpItem(file,type){
 }
 async function publishImgs(){
   if(!imgPending.length)return;
+  if(!(await ensureAdminAuth()))return;
   const cat=document.getElementById('imgCat').value;
   const title=document.getElementById('imgTitle').value||cat;
   const btn=document.getElementById('btnPublish');btn.textContent='Yükleniyor...';
@@ -982,6 +997,7 @@ muzDrop.addEventListener('dragover',e=>{e.preventDefault();muzDrop.classList.add
 muzDrop.addEventListener('dragleave',()=>muzDrop.classList.remove('over'));
 muzDrop.addEventListener('drop',e=>{e.preventDefault();muzDrop.classList.remove('over');handleMuz(e.dataTransfer.files)});
 async function handleMuz(files){
+  if(!(await ensureAdminAuth()))return;
   const fb=FB();
   for(const file of Array.from(files)){
     if(!file.type.startsWith('audio/')){toast('Sadece ses dosyasi yukleyin');continue;}
