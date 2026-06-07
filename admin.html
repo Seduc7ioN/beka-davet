@@ -15,6 +15,8 @@
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, query, orderBy, serverTimestamp, limit }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -29,10 +31,15 @@ const FC = {
 try {
   const app = initializeApp(FC);
   const db = getFirestore(app);
-  window._fb = { db, firebaseReady:true, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, query, orderBy, serverTimestamp, limit };
+  const auth = getAuth(app);
+  window._fb = { db, auth, firebaseReady:true, authReady:true, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, query, orderBy, serverTimestamp, limit, signInWithEmailAndPassword, signOut };
+  onAuthStateChanged(auth, user => {
+    window._authUser = user;
+    window.dispatchEvent(new Event('authready'));
+  });
   console.log('✅ Firebase bağlı');
 } catch(e) {
-  window._fb = { firebaseReady:false };
+  window._fb = { firebaseReady:false, authReady:false };
   console.warn('Firebase hatası:', e.message);
 }
 window.dispatchEvent(new Event('fbready'));
@@ -703,26 +710,54 @@ body{
 const LS={get:(k,d=null)=>{try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d;}catch(e){return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
 const getPass=()=>LS.get('bk_pass','beka2025');
 const FB=()=>window._fb||{firebaseReady:false};
+const ADMIN_EMAIL='admin@bekadavet.com';
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const escAttr=v=>esc(v).replace(/`/g,'&#96;');
+const jsStr=v=>String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ');
+const safeUrl=v=>{const s=String(v??'').trim();return /^(https:|blob:|data:image\/)/i.test(s)?s:'';};
+function showApp(){
+  document.getElementById('loginWrap').classList.add('gone');
+  document.getElementById('app').classList.add('visible');
+  LS.set('bk_session',Date.now());
+  if(typeof initApp==='function')initApp();
+  else{const t=setInterval(()=>{if(typeof initApp==='function'){clearInterval(t);initApp();}},200);}
+}
 
 // ══ AUTH ══
-function loginClick(){
+async function loginClick(){
   const u=document.getElementById('lUser').value.trim();
   const p=document.getElementById('lPass').value;
   const err=document.getElementById('lErr');
+  const btn=document.querySelector('.login-btn');
   let pass='beka2025';try{const v=localStorage.getItem('bk_pass');if(v)pass=JSON.parse(v);}catch(e){}
-  if(u==='admin'&&p===pass){
-    document.getElementById('loginWrap').classList.add('gone');
-    document.getElementById('app').classList.add('visible');
-    LS.set('bk_session',Date.now());
-    if(typeof initApp==='function')initApp();
-    else{const t=setInterval(()=>{if(typeof initApp==='function'){clearInterval(t);initApp();}},200);}
-  } else {
+  btn.disabled=true;err.textContent='';
+  try{
+    const fb=FB();
+    if(fb.authReady&&fb.signInWithEmailAndPassword){
+      const email=u.includes('@')?u:ADMIN_EMAIL;
+      try{
+        await fb.signInWithEmailAndPassword(fb.auth,email,p);
+        showApp();
+        return;
+      }catch(authErr){
+        if(!(u==='admin'&&p===pass))throw authErr;
+      }
+    }
+    if(u==='admin'&&p===pass){
+      showApp();
+    } else {
+      err.textContent='Hatalı kullanıcı adı veya şifre.';
+      setTimeout(()=>err.textContent='',3000);
+    }
+  }catch(e){
     err.textContent='Hatalı kullanıcı adı veya şifre.';
     setTimeout(()=>err.textContent='',3000);
+  }finally{
+    btn.disabled=false;
   }
 }
 function doLogin(){loginClick();}
-function doLogout(){LS.set('bk_session',0);location.reload();}
+async function doLogout(){LS.set('bk_session',0);const fb=FB();if(fb.authReady&&fb.auth){try{await fb.signOut(fb.auth);}catch(e){}}location.reload();}
 function changePassword(){
   const old=document.getElementById('pwOld').value;
   const n1=document.getElementById('pwNew').value;
@@ -847,19 +882,19 @@ async function renderCRM(){
   if(!list.length){el.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   el.innerHTML=list.map(c=>{
-    const info=getAnnivInfo(c.date);const lbl=annivLabel(info);const uc=urgClass(info);
+    const info=getAnnivInfo(c.date);const lbl=annivLabel(info);const uc=urgClass(info);const id=jsStr(c.id);
     const fDate=c.date?new Date(c.date).toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'}):'—';
     return`<div class="list-item ${uc}">
       <div class="li-icon">${TYPE_ICON[c.type]||'🎊'}</div>
       <div class="li-body">
-        <div class="li-title">${c.name}</div>
-        <div class="li-sub"><span>${c.phone}</span><span>${fDate}</span><span class="badge badge-gold">${c.type||''}</span></div>
-        <div class="li-anniv ${lbl.cls}">${lbl.txt}</div>
+        <div class="li-title">${esc(c.name)}</div>
+        <div class="li-sub"><span>${esc(c.phone)}</span><span>${esc(fDate)}</span><span class="badge badge-gold">${esc(c.type||'')}</span></div>
+        <div class="li-anniv ${lbl.cls}">${esc(lbl.txt)}</div>
       </div>
       <div class="li-actions">
-        <button class="btn btn-green btn-sm" onclick="openWA('${c.id}')" style="padding:8px 12px;font-size:.6rem;min-height:36px">WA</button>
-        <button class="btn btn-outline btn-sm" onclick="openContractFor('${c.id}')" style="padding:8px 10px;font-size:.6rem;min-height:36px">📄</button>
-        <button class="btn btn-red btn-sm" onclick="delCustUI('${c.id}')" style="padding:8px 10px;font-size:.6rem;min-height:36px">✕</button>
+        <button class="btn btn-green btn-sm" onclick="openWA('${id}')" style="padding:8px 12px;font-size:.6rem;min-height:36px">WA</button>
+        <button class="btn btn-outline btn-sm" onclick="openContractFor('${id}')" style="padding:8px 10px;font-size:.6rem;min-height:36px">📄</button>
+        <button class="btn btn-red btn-sm" onclick="delCustUI('${id}')" style="padding:8px 10px;font-size:.6rem;min-height:36px">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -895,12 +930,17 @@ function sendWA(){if(!waCustomer)return;const msg=document.getElementById('waMsg
 
 // ══ GALLERY ══
 let imgPending=[];
+const MAX_IMAGE_SIZE=8*1024*1024,MAX_AUDIO_SIZE=20*1024*1024;
 const imgDrop=document.getElementById('imgDrop');
 imgDrop.addEventListener('dragover',e=>{e.preventDefault();imgDrop.classList.add('over')});
 imgDrop.addEventListener('dragleave',()=>imgDrop.classList.remove('over'));
 imgDrop.addEventListener('drop',e=>{e.preventDefault();imgDrop.classList.remove('over');handleImgs(e.dataTransfer.files)});
 function handleImgs(files){
-  Array.from(files).filter(f=>f.type.startsWith('image/')).forEach(f=>{imgPending.push(f);addUpItem(f,'img');});
+  Array.from(files).forEach(f=>{
+    if(!f.type.startsWith('image/')){toast('Sadece gorsel dosyasi yukleyin');return;}
+    if(f.size>MAX_IMAGE_SIZE){toast('Gorsel 8 MB altinda olmali');return;}
+    imgPending.push(f);addUpItem(f,'img');
+  });
   document.getElementById('imgMetaCard').style.display=imgPending.length?'block':'none';
   if(!document.getElementById('imgTitle').value)document.getElementById('imgTitle').value='';
 }
@@ -908,8 +948,8 @@ function addUpItem(file,type){
   const list=document.getElementById(type==='img'?'uploadList':'muzUploadList');
   const id='up_'+Date.now()+'_'+Math.random().toString(36).slice(2);
   const div=document.createElement('div');div.className='up-item';div.id=id;
-  if(type==='img'){const url=URL.createObjectURL(file);div.innerHTML=`<img class="up-thumb" src="${url}"/><div class="up-name">${file.name}</div><div class="up-bar-wrap"><div class="up-bar" id="b_${id}"></div></div><span class="up-status" id="s_${id}">⏳</span>`;}
-  else{div.innerHTML=`<span style="font-size:1rem">🎵</span><div class="up-name">${file.name}</div><div class="up-bar-wrap"><div class="up-bar" id="b_${id}"></div></div><span class="up-status" id="s_${id}">⏳</span>`;}
+  if(type==='img'){const url=URL.createObjectURL(file);div.innerHTML=`<img class="up-thumb" src="${url}"/><div class="up-name">${esc(file.name)}</div><div class="up-bar-wrap"><div class="up-bar" id="b_${id}"></div></div><span class="up-status" id="s_${id}">⏳</span>`;}
+  else{div.innerHTML=`<span style="font-size:1rem">🎵</span><div class="up-name">${esc(file.name)}</div><div class="up-bar-wrap"><div class="up-bar" id="b_${id}"></div></div><span class="up-status" id="s_${id}">⏳</span>`;}
   list.appendChild(div);return id;
 }
 async function publishImgs(){
@@ -950,7 +990,8 @@ async function renderGallery(){
   empty.style.display='none';
   grid.innerHTML=list.map((item,i)=>{
     const ri=all.findIndex(g=>g.id===item.id||(g.addedAt===item.addedAt&&g.url===item.url));
-    return`<div class="gal-item"><img src="${item.url}" loading="lazy" onerror="this.style.display='none'"/><button class="gal-item-del" onclick="delPhotoUI('${item.id}','${item.storagePath||''}')">✕</button><div class="gal-item-cat">${item.cat||''}</div></div>`;
+    const id=jsStr(item.id),sp=jsStr(item.storagePath||''),url=escAttr(safeUrl(item.url));
+    return`<div class="gal-item"><img src="${url}" loading="lazy" onerror="this.style.display='none'"/><button class="gal-item-del" onclick="delPhotoUI('${id}','${sp}')">✕</button><div class="gal-item-cat">${esc(item.cat||'')}</div></div>`;
   }).join('');
 }
 async function delPhotoUI(id,sp){
@@ -967,7 +1008,9 @@ muzDrop.addEventListener('dragleave',()=>muzDrop.classList.remove('over'));
 muzDrop.addEventListener('drop',e=>{e.preventDefault();muzDrop.classList.remove('over');handleMuz(e.dataTransfer.files)});
 async function handleMuz(files){
   const fb=FB();
-  for(const file of Array.from(files).filter(f=>f.type.startsWith('audio/'))){
+  for(const file of Array.from(files)){
+    if(!file.type.startsWith('audio/')){toast('Sadece ses dosyasi yukleyin');continue;}
+    if(file.size>MAX_AUDIO_SIZE){toast('Ses dosyasi 20 MB altinda olmali');continue;}
     const itemId=addUpItem(file,'muz');
     const st=document.getElementById('s_'+itemId);const bar=document.getElementById('b_'+itemId);
     try{
@@ -990,15 +1033,18 @@ async function renderMuz(){
   const el=document.getElementById('muzList');const empty=document.getElementById('muzEmpty');
   if(!list.length){el.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  el.innerHTML=list.map(m=>`
+  el.innerHTML=list.map(m=>{
+    const id=jsStr(m.id);
+    return `
     <div class="music-row ${active?.id===m.id?'active-track':''}">
       <div class="music-icon">🎵</div>
-      <div class="music-info"><div class="music-name">${m.name}</div><div class="music-size">${m.size?(m.size/1024/1024).toFixed(1)+' MB':''}</div></div>
+      <div class="music-info"><div class="music-name">${esc(m.name)}</div><div class="music-size">${m.size?(m.size/1024/1024).toFixed(1)+' MB':''}</div></div>
       ${active?.id===m.id?'<span class="music-active-tag">Aktif</span>':''}
-      <button class="btn btn-outline btn-sm" onclick="previewMuz('${m.id}')" style="padding:8px;min-height:36px;width:36px;font-size:.8rem">▶</button>
-      <button class="btn btn-outline btn-sm" onclick="setActiveMuz('${m.id}')" style="padding:8px;min-height:36px;width:36px;font-size:.8rem">✦</button>
-      <button class="btn btn-red btn-sm" onclick="delMuz('${m.id}')" style="padding:8px;min-height:36px;width:36px;font-size:.8rem">✕</button>
-    </div>`).join('');
+      <button class="btn btn-outline btn-sm" onclick="previewMuz('${id}')" style="padding:8px;min-height:36px;width:36px;font-size:.8rem">▶</button>
+      <button class="btn btn-outline btn-sm" onclick="setActiveMuz('${id}')" style="padding:8px;min-height:36px;width:36px;font-size:.8rem">✦</button>
+      <button class="btn btn-red btn-sm" onclick="delMuz('${id}')" style="padding:8px;min-height:36px;width:36px;font-size:.8rem">✕</button>
+    </div>`;
+  }).join('');
 }
 async function previewMuz(id){if(previewAud){previewAud.pause();previewAud=null;}const l=await getMuzList();const m=l.find(x=>x.id===id);if(!m)return;previewAud=new Audio(m.url);previewAud.volume=.5;previewAud.play();toast('▶ '+m.name);setTimeout(()=>{if(previewAud){previewAud.pause();previewAud=null;}},10000);}
 async function setActiveMuz(id){const l=await getMuzList();const m=l.find(x=>x.id===id);if(!m)return;LS.set('bk_music',{id:m.id,name:m.name,url:m.url});renderMuz();renderDashboard();toast('✓ Aktif: '+m.name);}
@@ -1032,23 +1078,23 @@ async function renderTeklifler(){
   if(!filtered.length){el.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   el.innerHTML=filtered.map(t=>{
-    const isYeni=!t.durum||t.durum==='yeni';
+    const isYeni=!t.durum||t.durum==='yeni';const id=jsStr(t.id),phone=(t.tel||'').replace(/\D/g,'').replace(/^0/,'');
     const tarih=t.tarihEklendi?.toDate?t.tarihEklendi.toDate().toLocaleDateString('tr-TR'):(t.tarihEklendi?new Date(t.tarihEklendi).toLocaleDateString('tr-TR'):'—');
     return`<div class="teklif-card ${isYeni?'yeni':'incelendi'}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div class="teklif-name">${t.ad||'—'} <span class="badge ${isYeni?'badge-red':'badge-green'}">${isYeni?'Yeni':'İncelendi'}</span></div>
-        ${t.tur?`<span class="badge badge-gold">${t.tur}</span>`:''}
+        <div class="teklif-name">${esc(t.ad||'—')} <span class="badge ${isYeni?'badge-red':'badge-green'}">${isYeni?'Yeni':'İncelendi'}</span></div>
+        ${t.tur?`<span class="badge badge-gold">${esc(t.tur)}</span>`:''}
       </div>
       <div class="teklif-info">
-        <a href="tel:${t.tel}">📞 ${t.tel||'—'}</a>
-        ${t.tarih?`<span>📅 ${new Date(t.tarih).toLocaleDateString('tr-TR')}</span>`:''}
-        <span style="color:var(--dim);font-size:.62rem">${tarih}</span>
+        <a href="tel:${escAttr(t.tel||'')}">📞 ${esc(t.tel||'—')}</a>
+        ${t.tarih?`<span>📅 ${esc(new Date(t.tarih).toLocaleDateString('tr-TR'))}</span>`:''}
+        <span style="color:var(--dim);font-size:.62rem">${esc(tarih)}</span>
       </div>
-      ${t.mesaj?`<div class="teklif-msg">"${t.mesaj}"</div>`:''}
+      ${t.mesaj?`<div class="teklif-msg">"${esc(t.mesaj)}"</div>`:''}
       <div class="teklif-actions">
-        <a href="https://wa.me/90${(t.tel||'').replace(/\D/g,'').replace(/^0/,'')}" target="_blank" class="btn btn-green btn-sm" style="text-decoration:none;display:flex">💬 WA</a>
-        ${isYeni?`<button class="btn btn-outline btn-sm" onclick="teklifDurumGuncelle('${t.id}','incelendi')">✓ İncelendi</button>`:''}
-        <button class="btn btn-red btn-sm" onclick="teklifSil('${t.id}')">✕</button>
+        <a href="https://wa.me/90${phone}" target="_blank" rel="noopener noreferrer" class="btn btn-green btn-sm" style="text-decoration:none;display:flex">💬 WA</a>
+        ${isYeni?`<button class="btn btn-outline btn-sm" onclick="teklifDurumGuncelle('${id}','incelendi')">✓ İncelendi</button>`:''}
+        <button class="btn btn-red btn-sm" onclick="teklifSil('${id}')">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -1129,13 +1175,13 @@ async function renderDayDetail(ajandaData){
   if(!evs.length){el.innerHTML='<div style="font-size:.75rem;color:var(--dim);text-align:center;padding:10px">Bu gün plan yok</div>';return;}
   el.innerHTML=evs.map(e=>`
     <div class="plan-row">
-      <div class="plan-time">${e.saat||'--:--'}</div>
+      <div class="plan-time">${esc(e.saat||'--:--')}</div>
       <div class="plan-info">
-        <div class="plan-title">${TUR_ICONS2[e.tur]||'&#128204;'} ${e.baslik||''}</div>
-        ${e.konum?`<div class="plan-sub">${e.konum}</div>`:''}
-        ${e.not?`<div class="plan-sub">${e.not}</div>`:''}
+        <div class="plan-title">${esc(TUR_ICONS2[e.tur]||'📌')} ${esc(e.baslik||'')}</div>
+        ${e.konum?`<div class="plan-sub">${esc(e.konum)}</div>`:''}
+        ${e.not?`<div class="plan-sub">${esc(e.not)}</div>`:''}
       </div>
-      <button class="icon-btn del" onclick="ajandaSil('${e.id}')">x</button>
+      <button class="icon-btn del" onclick="ajandaSil('${jsStr(e.id)}')">x</button>
     </div>`).join('');
 }
 
@@ -1175,7 +1221,7 @@ async function ajandaSil(id){
 async function initAjanda(){
   const sel=document.getElementById('ajMusteri');
   const custs=await getCusts();
-  sel.innerHTML='<option value="">Musteri secilmedi</option>'+custs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  sel.innerHTML='<option value="">Musteri secilmedi</option>'+custs.map(c=>`<option value="${escAttr(c.id)}">${esc(c.name)}</option>`).join('');
   await renderCalendar();
 }
 async function calToday(){calYear=new Date().getFullYear();calMonth=new Date().getMonth();calSelected=new Date().toISOString().split('T')[0];await renderCalendar();}
@@ -1190,8 +1236,8 @@ async function renderDashboard(){
   document.getElementById('dPhoto').textContent=gallery.length;
   document.getElementById('dAnniv').textContent=upcoming.length;
   document.getElementById('dTeklif').textContent=yeni.length;
-  document.getElementById('dAnnivList').innerHTML=upcoming.length?upcoming.slice(0,5).map(x=>`<div class="list-item"><div class="li-body"><div class="li-title">${x.c.name}</div><div class="li-anniv gold">${annivLabel(x.i).txt}</div></div></div>`).join(''):'<div class="empty-state"><span class="empty-txt">Henuz yok</span></div>';
-  document.getElementById('dTeklifList').innerHTML=yeni.length?yeni.slice(0,5).map(t=>`<div class="list-item"><div class="li-body"><div class="li-title">${t.ad||'Isimsiz'}</div><div class="li-sub">${t.tel||''}</div></div></div>`).join(''):'<div class="empty-state"><span class="empty-txt">Henuz yok</span></div>';
+  document.getElementById('dAnnivList').innerHTML=upcoming.length?upcoming.slice(0,5).map(x=>`<div class="list-item"><div class="li-body"><div class="li-title">${esc(x.c.name)}</div><div class="li-anniv gold">${esc(annivLabel(x.i).txt)}</div></div></div>`).join(''):'<div class="empty-state"><span class="empty-txt">Henuz yok</span></div>';
+  document.getElementById('dTeklifList').innerHTML=yeni.length?yeni.slice(0,5).map(t=>`<div class="list-item"><div class="li-body"><div class="li-title">${esc(t.ad||'Isimsiz')}</div><div class="li-sub">${esc(t.tel||'')}</div></div></div>`).join(''):'<div class="empty-state"><span class="empty-txt">Henuz yok</span></div>';
 }
 
 async function updateBadges(){
@@ -1216,7 +1262,7 @@ function renderContract(){
   const name=document.getElementById('ctName').value.trim();
   if(!name){toast('Musteri adi zorunlu');return;}
   const type=document.getElementById('ctType').value,date=document.getElementById('ctDate').value;
-  document.getElementById('contractDoc').innerHTML=`<div class="contract-doc"><h2>KVKK Aydinlatma ve Onay Metni</h2><p><strong>${name}</strong>, ${type} organizasyonu kapsaminda paylastigi iletisim ve organizasyon bilgilerinin hizmetin yurutulmesi amaciyla islenmesini kabul eder.</p><p>Organizasyon tarihi: ${date||'-'}</p><p>Sozlesme tarihi: ${document.getElementById('ctContractDate').value||'-'}</p></div>`;
+  document.getElementById('contractDoc').innerHTML=`<div class="contract-doc"><h2>KVKK Aydinlatma ve Onay Metni</h2><p><strong>${esc(name)}</strong>, ${esc(type)} organizasyonu kapsaminda paylastigi iletisim ve organizasyon bilgilerinin hizmetin yurutulmesi amaciyla islenmesini kabul eder.</p><p>Organizasyon tarihi: ${esc(date||'-')}</p><p>Sozlesme tarihi: ${esc(document.getElementById('ctContractDate').value||'-')}</p></div>`;
 }
 function printContract(){if(!document.getElementById('contractDoc').innerHTML)renderContract();window.print();}
 
@@ -1225,12 +1271,11 @@ async function initApp(){
   await Promise.all([renderDashboard(),renderCRM(),renderGallery(),renderMuz(),renderTeklifler(),updateBadges()]);
 }
 window._appReady=()=>{updateFBStatus();if(document.getElementById('app').classList.contains('visible'))initApp();};
+window.addEventListener('authready',()=>{if(window._authUser&&!document.getElementById('app').classList.contains('visible'))showApp();});
 window.addEventListener('load',()=>{
   const sess=LS.get('bk_session',0);
   if(sess&&(Date.now()-sess)<86400000){
-    document.getElementById('loginWrap').classList.add('gone');
-    document.getElementById('app').classList.add('visible');
-    initApp();
+    showApp();
   }
   setTimeout(updateFBStatus,1200);
 });

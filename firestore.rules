@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function validOptionalString(field, maxLength) {
+      return !(field in request.resource.data)
+        || (request.resource.data[field] is string
+          && request.resource.data[field].size() <= maxLength);
+    }
+
+    function validOfferCreate() {
+      return request.resource.data.keys().hasOnly([
+          'ad',
+          'tel',
+          'tur',
+          'tarih',
+          'mesaj',
+          'tarihEklendi',
+          'durum'
+        ])
+        && request.resource.data.ad is string
+        && request.resource.data.ad.size() > 1
+        && request.resource.data.ad.size() <= 120
+        && request.resource.data.tel is string
+        && request.resource.data.tel.size() >= 10
+        && request.resource.data.tel.size() <= 32
+        && validOptionalString('tur', 80)
+        && validOptionalString('tarih', 32)
+        && validOptionalString('mesaj', 1000)
+        && request.resource.data.durum == 'yeni'
+        && request.resource.data.tarihEklendi is timestamp;
+    }
+
+    match /admins/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if isAdmin();
+    }
+
+    match /gallery/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /music/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if id == 'activeMusic';
+      allow write: if isAdmin();
+    }
+
+    match /teklifler/{id} {
+      allow create: if validOfferCreate();
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /customers/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /ajanda/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

@@ -1,8 +1,7 @@
-const CACHE = 'beka-davet-v1';
+const CACHE = 'beka-davet-v2';
 const ASSETS = [
   '/',
   '/index.html',
-  '/admin.html',
   '/manifest.json'
 ];
 
@@ -26,6 +25,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (url.pathname.endsWith('/admin.html')) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {
