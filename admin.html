@@ -592,6 +592,10 @@ body{
           <div class="chip on" onclick="setTeklifFilter(this,'all')">Tümü</div>
           <div class="chip" onclick="setTeklifFilter(this,'yeni')">🔴 Yeni</div>
           <div class="chip" onclick="setTeklifFilter(this,'incelendi')">✅ İncelendi</div>
+          <div class="chip" onclick="setTeklifFilter(this,'gorusuldu')">Görüşüldü</div>
+          <div class="chip" onclick="setTeklifFilter(this,'teklif')">Teklif</div>
+          <div class="chip" onclick="setTeklifFilter(this,'onaylandi')">Onay</div>
+          <div class="chip" onclick="setTeklifFilter(this,'kaybedildi')">Kayıp</div>
         </div>
         <div id="teklifList"></div>
         <div class="empty-state" id="teklifEmpty" style="display:none"><span class="empty-icon">📭</span><span class="empty-txt">Teklif talebi yok</span></div>
@@ -608,6 +612,29 @@ body{
         <div id="muzUploadList"></div>
         <div id="muzList"></div>
         <div class="empty-state" id="muzEmpty" style="display:none"><span class="empty-icon">🎵</span><span class="empty-txt">Müzik yok</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Paket Yönetimi</div>
+        <div class="fg-row">
+          <div class="fg"><label>Paket Adı</label><input type="text" id="pkgName" placeholder="Nişan Başlangıç"/></div>
+          <div class="fg"><label>Fiyat</label><input type="text" id="pkgPrice" placeholder="₺12.500'den başlayan"/></div>
+        </div>
+        <div class="fg"><label>Açıklama</label><textarea id="pkgDesc" placeholder="Paket içeriği ve kısa açıklama"></textarea></div>
+        <button class="btn btn-gold" onclick="paketEkle()" id="btnPkgAdd">+ Paketi Yayınla</button>
+        <div id="pkgList" style="margin-top:12px"></div>
+        <div class="empty-state" id="pkgEmpty" style="display:none"><span class="empty-icon">📦</span><span class="empty-txt">Paket yok</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Rapor ve Dışa Aktarım</div>
+        <div class="stat-row" style="margin-bottom:12px">
+          <div class="stat-card"><span class="stat-lbl">Bu Ay Teklif</span><span class="stat-val" id="rMonthTeklif">0</span><span class="stat-sub">Talep</span></div>
+          <div class="stat-card"><span class="stat-lbl">Onay Oranı</span><span class="stat-val" id="rConv">0%</span><span class="stat-sub">Tekliflerden</span></div>
+        </div>
+        <div class="fg-row">
+          <button class="btn btn-outline" onclick="exportData('customers')">Müşteri CSV</button>
+          <button class="btn btn-outline" onclick="exportData('teklifler')">Teklif CSV</button>
+        </div>
+        <button class="btn btn-outline" onclick="exportData('ajanda')" style="margin-top:8px">Ajanda CSV</button>
       </div>
       <!-- Hesap -->
       <div class="card">
@@ -770,7 +797,7 @@ function goTab(name,el){
   if(name==='musteriler')renderCRM();
   if(name==='vitrin'){renderGallery();renderMuz();}
   if(name==='ajanda')initAjanda();
-  if(name==='ayarlar'){renderTeklifler();renderMuz();}
+  if(name==='ayarlar'){renderTeklifler();renderMuz();renderPackages();renderReports();}
   if(name==='home')renderDashboard();
 }
 
@@ -803,6 +830,10 @@ async function delCustDB(id){
   const fb=FB();if(fb.firebaseReady){try{await fb.deleteDoc(fb.doc(fb.db,'customers',id));return;}catch(e){}}
   LS.set('bk_custs',LS.get('bk_custs',[]).filter(c=>c.id!==id));
 }
+async function updateCustDB(id,data){
+  const fb=FB();if(fb.firebaseReady){try{await fb.setDoc(fb.doc(fb.db,'customers',id),data,{merge:true});return;}catch(e){}}
+  LS.set('bk_custs',LS.get('bk_custs',[]).map(c=>c.id===id?{...c,...data}:c));
+}
 async function getGallery(){
   const fb=FB();if(fb.firebaseReady){try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'gallery'),fb.orderBy('addedAt','desc')));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){}}
   return LS.get('bk_gallery',[]);
@@ -818,6 +849,18 @@ async function getTeklifler(){
 async function getAjanda(){
   const fb=FB();if(fb.firebaseReady){try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'ajanda'),fb.orderBy('date','asc')));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){}}
   return LS.get('bk_ajanda',[]);
+}
+async function getPackages(){
+  const fb=FB();if(fb.firebaseReady){try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'packages'),fb.orderBy('order','asc')));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){}}
+  return LS.get('bk_packages',[]);
+}
+async function addPackage(data){
+  const fb=FB();if(fb.firebaseReady){try{const r=await fb.addDoc(fb.collection(fb.db,'packages'),{...data,addedAt:fb.serverTimestamp()});return r.id;}catch(e){}}
+  const l=LS.get('bk_packages',[]);const item={...data,id:Date.now()+'',addedAt:new Date().toISOString()};l.unshift(item);LS.set('bk_packages',l);return item.id;
+}
+async function delPackageDB(id){
+  const fb=FB();if(fb.firebaseReady){try{await fb.deleteDoc(fb.doc(fb.db,'packages',id));return;}catch(e){}}
+  LS.set('bk_packages',LS.get('bk_packages',[]).filter(p=>p.id!==id));
 }
 function fileToBase64(f){return new Promise(r=>{const rd=new FileReader();rd.onload=e=>r(e.target.result);rd.readAsDataURL(f);});}
 
@@ -882,6 +925,7 @@ async function renderCRM(){
       </div>
       <div class="li-actions">
         <button class="btn btn-green btn-sm" onclick="openWA('${id}')" style="padding:8px 12px;font-size:.6rem;min-height:36px">WA</button>
+        <button class="btn btn-outline btn-sm" onclick="editCustUI('${id}')" style="padding:8px 10px;font-size:.6rem;min-height:36px">Düzenle</button>
         <button class="btn btn-outline btn-sm" onclick="openContractFor('${id}')" style="padding:8px 10px;font-size:.6rem;min-height:36px">📄</button>
         <button class="btn btn-red btn-sm" onclick="delCustUI('${id}')" style="padding:8px 10px;font-size:.6rem;min-height:36px">✕</button>
       </div>
@@ -889,6 +933,16 @@ async function renderCRM(){
   }).join('');
 }
 async function delCustUI(id){if(!confirm('Silinsin mi?'))return;await delCustDB(id);renderCRM();renderDashboard();updateBadges();toast('Silindi');}
+async function editCustUI(id){
+  const c=(await getCusts()).find(x=>x.id===id);if(!c)return;
+  const name=prompt('Müşteri adı',c.name||'');if(name===null)return;
+  const phone=prompt('Telefon',c.phone||'');if(phone===null)return;
+  const date=prompt('Organizasyon tarihi (YYYY-AA-GG)',c.date||'');if(date===null)return;
+  const note=prompt('Not',c.note||'');if(note===null)return;
+  if(!name.trim()||!phone.trim()){toast('Ad ve telefon zorunlu');return;}
+  await updateCustDB(id,{name:name.trim().slice(0,120),phone:phone.trim().slice(0,32),date:date.trim().slice(0,32),note:note.trim().slice(0,500)});
+  await renderCRM();await renderDashboard();toast('Müşteri güncellendi');
+}
 
 // ══ WHATSAPP ══
 let waCustomer=null;
@@ -1048,16 +1102,24 @@ async function delMuz(id){
 
 // ══ TEKLIFLER ══
 let teklifFilter='all';
+const TEKLIF_STATUSES={
+  yeni:{label:'Yeni',badge:'badge-red',card:'yeni'},
+  incelendi:{label:'İncelendi',badge:'badge-green',card:'incelendi'},
+  gorusuldu:{label:'Görüşüldü',badge:'badge-gold',card:'incelendi'},
+  teklif:{label:'Teklif Verildi',badge:'badge-gold',card:'incelendi'},
+  onaylandi:{label:'Onaylandı',badge:'badge-green',card:'incelendi'},
+  kaybedildi:{label:'Kaybedildi',badge:'badge-red',card:'incelendi'}
+};
 function setTeklifFilter(btn,f){teklifFilter=f;btn.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));btn.classList.add('on');renderTeklifler();}
 async function teklifDurumGuncelle(id,durum){
   const fb=FB();if(fb.firebaseReady){try{await fb.setDoc(fb.doc(fb.db,'teklifler',id),{durum},{merge:true});}catch(e){}}
-  renderTeklifler();renderDashboard();toast(durum==='incelendi'?'✓ İncelendi':'Güncellendi');
+  renderTeklifler();renderDashboard();renderReports();toast(TEKLIF_STATUSES[durum]?.label||'Güncellendi');
 }
 async function teklifSil(id){
   if(!confirm('Silinsin mi?'))return;
   const fb=FB();if(fb.firebaseReady){try{await fb.deleteDoc(fb.doc(fb.db,'teklifler',id));}catch(e){}}
   else{const l=LS.get('bk_teklifler',[]).filter(t=>t.id!==id);LS.set('bk_teklifler',l);}
-  renderTeklifler();renderDashboard();updateBadges();toast('Silindi');
+  renderTeklifler();renderDashboard();renderReports();updateBadges();toast('Silindi');
 }
 async function renderTeklifler(){
   const list=await getTeklifler();
@@ -1069,22 +1131,29 @@ async function renderTeklifler(){
   if(!filtered.length){el.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
   el.innerHTML=filtered.map(t=>{
-    const isYeni=!t.durum||t.durum==='yeni';const id=jsStr(t.id),phone=(t.tel||'').replace(/\D/g,'').replace(/^0/,'');
+    const durum=t.durum||'yeni',meta=TEKLIF_STATUSES[durum]||TEKLIF_STATUSES.yeni;
+    const isYeni=durum==='yeni';const id=jsStr(t.id),phone=(t.tel||'').replace(/\D/g,'').replace(/^0/,'');
     const tarih=t.tarihEklendi?.toDate?t.tarihEklendi.toDate().toLocaleDateString('tr-TR'):(t.tarihEklendi?new Date(t.tarihEklendi).toLocaleDateString('tr-TR'):'—');
-    return`<div class="teklif-card ${isYeni?'yeni':'incelendi'}">
+    const teklifMsg=`Merhaba ${t.ad||''}, Beka Davet teklif talebiniz için teşekkür ederiz. ${t.tur?`${t.tur} organizasyonunuz`:'Organizasyonunuz'} için detayları netleştirip size en uygun paketi paylaşmak isteriz. Uygun olduğunuzda kısa bir görüşme yapabilir miyiz?`;
+    return`<div class="teklif-card ${meta.card}">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div class="teklif-name">${esc(t.ad||'—')} <span class="badge ${isYeni?'badge-red':'badge-green'}">${isYeni?'Yeni':'İncelendi'}</span></div>
+        <div class="teklif-name">${esc(t.ad||'—')} <span class="badge ${meta.badge}">${esc(meta.label)}</span></div>
         ${t.tur?`<span class="badge badge-gold">${esc(t.tur)}</span>`:''}
       </div>
       <div class="teklif-info">
         <a href="tel:${escAttr(t.tel||'')}">📞 ${esc(t.tel||'—')}</a>
         ${t.tarih?`<span>📅 ${esc(new Date(t.tarih).toLocaleDateString('tr-TR'))}</span>`:''}
+        ${t.butce?`<span>${esc(t.butce)}</span>`:''}
+        ${t.kaynak?`<span>${esc(t.kaynak)}</span>`:''}
         <span style="color:var(--dim);font-size:.62rem">${esc(tarih)}</span>
       </div>
       ${t.mesaj?`<div class="teklif-msg">"${esc(t.mesaj)}"</div>`:''}
       <div class="teklif-actions">
-        <a href="https://wa.me/90${phone}" target="_blank" rel="noopener noreferrer" class="btn btn-green btn-sm" style="text-decoration:none;display:flex">💬 WA</a>
-        ${isYeni?`<button class="btn btn-outline btn-sm" onclick="teklifDurumGuncelle('${id}','incelendi')">✓ İncelendi</button>`:''}
+        <a href="https://wa.me/90${phone}?text=${encodeURIComponent(teklifMsg)}" target="_blank" rel="noopener noreferrer" class="btn btn-green btn-sm" style="text-decoration:none;display:flex">💬 WA</a>
+        ${durum!=='gorusuldu'?`<button class="btn btn-outline btn-sm" onclick="teklifDurumGuncelle('${id}','gorusuldu')">Görüşüldü</button>`:''}
+        ${durum!=='teklif'?`<button class="btn btn-outline btn-sm" onclick="teklifDurumGuncelle('${id}','teklif')">Teklif</button>`:''}
+        ${durum!=='onaylandi'?`<button class="btn btn-outline btn-sm" onclick="teklifDurumGuncelle('${id}','onaylandi')">Onay</button>`:''}
+        ${durum!=='kaybedildi'?`<button class="btn btn-outline btn-sm" onclick="teklifDurumGuncelle('${id}','kaybedildi')">Kayıp</button>`:''}
         <button class="btn btn-red btn-sm" onclick="teklifSil('${id}')">✕</button>
       </div>
     </div>`;
@@ -1097,23 +1166,38 @@ const MONTHS_TR=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağ
 const TUR_ICONS2={nishan:'💍',kina:'🪷',dogum:'🎂',etkinlik:'✨',randevu:'📋',diger:'📌'};
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelected=new Date().toISOString().split('T')[0];
 
+function gregorianToJD(y,m,d){
+  if(m<=2){y--;m+=12;}
+  const a=Math.floor(y/100),b=2-a+Math.floor(a/4);
+  return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+b-1524.5;
+}
+function islamicToJD(y,m,d){return d+Math.ceil(29.5*(m-1))+(y-1)*354+Math.floor((3+11*y)/30)+1948439.5-1;}
+function gregorianToIslamic(y,m,d){
+  const jd=Math.floor(gregorianToJD(y,m,d))+.5;
+  const iy=Math.floor((30*(jd-1948439.5)+10646)/10631);
+  const im=Math.min(12,Math.ceil((jd-(29+islamicToJD(iy,1,1)))/29.5)+1);
+  return{month:im,day:Math.floor(jd-islamicToJD(iy,im,1)+1)};
+}
 function getTatiller(y){
-  return{
+  const days={
     [y+"-01-01"]:"Yilbasi",
     [y+"-04-23"]:"23 Nisan",
     [y+"-05-01"]:"1 Mayis",
     [y+"-05-19"]:"19 Mayis",
     [y+"-07-15"]:"15 Temmuz",
     [y+"-08-30"]:"30 Agustos",
-    [y+"-10-29"]:"29 Ekim",
-    [y+"-03-20"]:"Ramazan Bayrami",
-    [y+"-03-21"]:"Ramazan Bayrami",
-    [y+"-03-22"]:"Ramazan Bayrami",
-    [y+"-05-27"]:"Kurban Bayrami",
-    [y+"-05-28"]:"Kurban Bayrami",
-    [y+"-05-29"]:"Kurban Bayrami",
-    [y+"-05-30"]:"Kurban Bayrami",
+    [y+"-10-29"]:"29 Ekim"
   };
+  for(let m=1;m<=12;m++){
+    for(let d=1;d<=31;d++){
+      const dt=new Date(Date.UTC(y,m-1,d));
+      if(dt.getUTCMonth()!==m-1)continue;
+      const h=gregorianToIslamic(y,m,d),key=dt.toISOString().slice(0,10);
+      if(h.month===10&&h.day>=1&&h.day<=3)days[key]='Ramazan Bayrami';
+      if(h.month===12&&h.day>=10&&h.day<=13)days[key]='Kurban Bayrami';
+    }
+  }
+  return days;
 }
 
 async function renderCalendar(){
@@ -1219,6 +1303,74 @@ async function calToday(){calYear=new Date().getFullYear();calMonth=new Date().g
 async function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}await renderCalendar();}
 async function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}await renderCalendar();}
 
+async function paketEkle(){
+  const name=document.getElementById('pkgName').value.trim();
+  const price=document.getElementById('pkgPrice').value.trim();
+  const desc=document.getElementById('pkgDesc').value.trim();
+  if(!name){toast('Paket adi zorunlu');return;}
+  const btn=document.getElementById('btnPkgAdd');btn.disabled=true;btn.textContent='Yayınlanıyor...';
+  const list=await getPackages();
+  await addPackage({name:name.slice(0,80),price:price.slice(0,80),desc:desc.slice(0,320),order:list.length+1,active:true});
+  ['pkgName','pkgPrice','pkgDesc'].forEach(id=>document.getElementById(id).value='');
+  btn.disabled=false;btn.textContent='+ Paketi Yayınla';
+  await renderPackages();toast('Paket yayınlandı');
+}
+async function renderPackages(){
+  const list=await getPackages();
+  const el=document.getElementById('pkgList'),empty=document.getElementById('pkgEmpty');
+  if(!el||!empty)return;
+  if(!list.length){el.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  el.innerHTML=list.map(p=>{
+    const id=jsStr(p.id);
+    return`<div class="list-item">
+      <div class="li-icon">📦</div>
+      <div class="li-body">
+        <div class="li-title">${esc(p.name||'Paket')}</div>
+        <div class="li-sub"><span>${esc(p.price||'Fiyat görüşülür')}</span></div>
+        ${p.desc?`<div class="li-anniv gray">${esc(p.desc)}</div>`:''}
+      </div>
+      <div class="li-actions"><button class="btn btn-red btn-sm" onclick="paketSil('${id}')">✕</button></div>
+    </div>`;
+  }).join('');
+}
+async function paketSil(id){
+  if(!confirm('Paket silinsin mi?'))return;
+  await delPackageDB(id);await renderPackages();toast('Paket silindi');
+}
+function csvCell(v){return `"${String(v??'').replace(/"/g,'""')}"`;}
+function downloadCSV(name,rows){
+  const csv=rows.map(r=>r.map(csvCell).join(',')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+async function exportData(type){
+  if(type==='customers'){
+    const rows=[['Ad','Telefon','Tarih','Tur','Not'],...(await getCusts()).map(c=>[c.name,c.phone,c.date,c.type,c.note])];
+    downloadCSV('beka-musteriler.csv',rows);return;
+  }
+  if(type==='teklifler'){
+    const rows=[['Ad','Telefon','Tur','Tarih','Butce','Kaynak','Durum','Mesaj'],...(await getTeklifler()).map(t=>[t.ad,t.tel,t.tur,t.tarih,t.butce,t.kaynak,t.durum||'yeni',t.mesaj])];
+    downloadCSV('beka-teklifler.csv',rows);return;
+  }
+  const rows=[['Tarih','Saat','Baslik','Tur','Konum','Not'],...(await getAjanda()).map(a=>[a.date,a.saat,a.baslik,a.tur,a.konum,a.not])];
+  downloadCSV('beka-ajanda.csv',rows);
+}
+async function renderReports(){
+  const teklifler=await getTeklifler();
+  const month=new Date().toISOString().slice(0,7);
+  const thisMonth=teklifler.filter(t=>{
+    const d=t.tarihEklendi?.toDate?t.tarihEklendi.toDate():new Date(t.tarihEklendi||0);
+    return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,7)===month;
+  });
+  const finished=teklifler.filter(t=>['onaylandi','kaybedildi'].includes(t.durum));
+  const won=teklifler.filter(t=>t.durum==='onaylandi').length;
+  const conv=finished.length?Math.round((won/finished.length)*100):0;
+  const mt=document.getElementById('rMonthTeklif'),cv=document.getElementById('rConv');
+  if(mt)mt.textContent=thisMonth.length;
+  if(cv)cv.textContent=conv+'%';
+}
+
 async function renderDashboard(){
   const [custs,gallery,teklifler]=await Promise.all([getCusts(),getGallery(),getTeklifler()]);
   const upcoming=custs.map(c=>({c,i:getAnnivInfo(c.date)})).filter(x=>x.i&&x.i.diff<=30).sort((a,b)=>a.i.diff-b.i.diff);
@@ -1259,7 +1411,7 @@ function printContract(){if(!document.getElementById('contractDoc').innerHTML)re
 
 async function initApp(){
   updateFBStatus();
-  await Promise.all([renderDashboard(),renderCRM(),renderGallery(),renderMuz(),renderTeklifler(),updateBadges()]);
+  await Promise.all([renderDashboard(),renderCRM(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderReports(),updateBadges()]);
 }
 window._appReady=()=>{updateFBStatus();if(document.getElementById('app').classList.contains('visible'))initApp();};
 window.addEventListener('authready',()=>{if(window._authUser&&!document.getElementById('app').classList.contains('visible'))showApp();});

@@ -23,6 +23,8 @@ service cloud.firestore {
           'tel',
           'tur',
           'tarih',
+          'butce',
+          'kaynak',
           'mesaj',
           'tarihEklendi',
           'durum'
@@ -35,6 +37,8 @@ service cloud.firestore {
         && request.resource.data.tel.size() <= 32
         && validOptionalString('tur', 80)
         && validOptionalString('tarih', 32)
+        && validOptionalString('butce', 80)
+        && validOptionalString('kaynak', 80)
         && validOptionalString('mesaj', 1000)
         && request.resource.data.durum == 'yeni'
         && request.resource.data.tarihEklendi is timestamp;
@@ -51,6 +55,11 @@ service cloud.firestore {
     }
 
     match /music/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /packages/{id} {
       allow read: if true;
       allow write: if isAdmin();
     }
