@@ -609,13 +609,12 @@ body{
         <div id="muzList"></div>
         <div class="empty-state" id="muzEmpty" style="display:none"><span class="empty-icon">🎵</span><span class="empty-txt">Müzik yok</span></div>
       </div>
-      <!-- Şifre -->
+      <!-- Hesap -->
       <div class="card">
-        <div class="card-title">Şifre Değiştir</div>
-        <div class="fg"><label>Mevcut Şifre</label><input type="password" id="pwOld" placeholder="••••••••"/></div>
-        <div class="fg"><label>Yeni Şifre</label><input type="password" id="pwNew" placeholder="••••••••"/></div>
-        <div class="fg"><label>Tekrar</label><input type="password" id="pwNew2" placeholder="••••••••"/></div>
-        <button class="btn btn-gold" onclick="changePassword()">Şifreyi Değiştir</button>
+        <div class="card-title">Hesap Güvenliği</div>
+        <div style="font-size:.75rem;color:var(--muted);line-height:1.7">
+          Admin şifresi Firebase Authentication üzerinden yönetilir. Şifre değiştirmek için Firebase Console &gt; Authentication &gt; Users bölümünü kullanın.
+        </div>
       </div>
       <!-- Çıkış -->
       <button class="btn btn-red" onclick="doLogout()" style="margin-top:4px">Çıkış Yap</button>
@@ -708,7 +707,6 @@ body{
 'use strict';
 // ══ STORAGE ══
 const LS={get:(k,d=null)=>{try{const v=localStorage.getItem(k);return v!==null?JSON.parse(v):d;}catch(e){return d;}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
-const getPass=()=>LS.get('bk_pass','beka2025');
 const FB=()=>window._fb||{firebaseReady:false};
 const ADMIN_EMAIL='admin@bekadavet.com';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -729,26 +727,13 @@ async function loginClick(){
   const p=document.getElementById('lPass').value;
   const err=document.getElementById('lErr');
   const btn=document.querySelector('.login-btn');
-  let pass='beka2025';try{const v=localStorage.getItem('bk_pass');if(v)pass=JSON.parse(v);}catch(e){}
   btn.disabled=true;err.textContent='';
   try{
     const fb=FB();
-    if(fb.authReady&&fb.signInWithEmailAndPassword){
-      const email=u.includes('@')?u:ADMIN_EMAIL;
-      try{
-        await fb.signInWithEmailAndPassword(fb.auth,email,p);
-        showApp();
-        return;
-      }catch(authErr){
-        if(!(u==='admin'&&p===pass))throw authErr;
-      }
-    }
-    if(u==='admin'&&p===pass){
-      showApp();
-    } else {
-      err.textContent='Hatalı kullanıcı adı veya şifre.';
-      setTimeout(()=>err.textContent='',3000);
-    }
+    if(!fb.authReady||!fb.signInWithEmailAndPassword)throw new Error('auth-unavailable');
+    const email=u.includes('@')?u:ADMIN_EMAIL;
+    await fb.signInWithEmailAndPassword(fb.auth,email,p);
+    showApp();
   }catch(e){
     err.textContent='Hatalı kullanıcı adı veya şifre.';
     setTimeout(()=>err.textContent='',3000);
@@ -758,16 +743,6 @@ async function loginClick(){
 }
 function doLogin(){loginClick();}
 async function doLogout(){LS.set('bk_session',0);const fb=FB();if(fb.authReady&&fb.auth){try{await fb.signOut(fb.auth);}catch(e){}}location.reload();}
-function changePassword(){
-  const old=document.getElementById('pwOld').value;
-  const n1=document.getElementById('pwNew').value;
-  const n2=document.getElementById('pwNew2').value;
-  if(old!==getPass()){toast('❌ Mevcut şifre hatalı');return;}
-  if(n1.length<6){toast('❌ En az 6 karakter');return;}
-  if(n1!==n2){toast('❌ Şifreler eşleşmiyor');return;}
-  LS.set('bk_pass',n1);toast('✓ Şifre değiştirildi');
-  ['pwOld','pwNew','pwNew2'].forEach(id=>document.getElementById(id).value='');
-}
 document.getElementById('lPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 // ══ NAV ══
