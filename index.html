@@ -129,17 +129,21 @@ body.music-active{ padding-bottom:64px; }
 
 .intro-slides::after{
   content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
-  background:linear-gradient(to bottom,rgba(12,9,8,.5) 0%,rgba(12,9,8,.15) 35%,rgba(12,9,8,.6) 100%);
+  background:
+    radial-gradient(circle at center,rgba(12,9,8,.5) 0%,rgba(12,9,8,.28) 34%,rgba(12,9,8,.68) 100%),
+    linear-gradient(to bottom,rgba(12,9,8,.48) 0%,rgba(12,9,8,.2) 35%,rgba(12,9,8,.64) 100%);
 }
 
 .intro-text{
   position:absolute;inset:0;z-index:3;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   pointer-events:none;text-align:center;padding:0 24px;
+  text-shadow:0 3px 18px rgba(0,0,0,.9),0 1px 2px rgba(0,0,0,.85);
 }
 .i-eyebrow{
-  font-size:.58rem;letter-spacing:.55em;text-transform:uppercase;color:var(--gold);
+  font-size:.62rem;letter-spacing:.5em;text-transform:uppercase;color:#d7b66d;
   opacity:0;transform:translateY(12px);transition:all .9s .3s;margin-bottom:22px;
+  font-weight:700;
 }
 .i-eyebrow.on{opacity:1;transform:none}
 .i-title{
@@ -152,12 +156,12 @@ body.music-active{ padding-bottom:64px; }
 .i-title img{display:none!important}
 .i-title::after{
   content:'Beka Davet';display:block;
-  font-size:clamp(1.65rem,3.5vw,2.75rem);font-weight:300;line-height:1;
-  letter-spacing:.14em;color:rgba(255,248,245,.82);
-  text-shadow:0 2px 18px rgba(0,0,0,.75);
+  font-size:clamp(2.15rem,4.6vw,3.7rem);font-weight:500;line-height:1;
+  letter-spacing:.16em;color:rgba(255,252,248,.98);
+  text-shadow:0 4px 28px rgba(0,0,0,.95),0 1px 2px rgba(0,0,0,.9);
 }
 .i-sub{
-  font-size:.8rem;letter-spacing:.14em;color:rgba(255,255,255,.5);
+  font-size:.86rem;letter-spacing:.14em;color:rgba(255,255,255,.86);
   margin-top:22px;font-weight:300;opacity:0;transition:all .9s .9s;
 }
 .i-sub.on{opacity:1}
