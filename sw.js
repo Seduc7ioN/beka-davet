@@ -1,4 +1,4 @@
-const CACHE = 'beka-davet-v3';
+const CACHE = 'beka-davet-v4';
 const ASSETS = [
   '/',
   '/index.html',
@@ -27,6 +27,18 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
   if (url.pathname.endsWith('/admin.html')) return;
+  if (e.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('/index.html')) {
+    e.respondWith(
+      fetch(new Request(e.request, {cache: 'reload'}))
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put('/index.html', clone));
+          return res;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then(res => {
