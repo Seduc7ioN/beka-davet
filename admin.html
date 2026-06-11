@@ -900,11 +900,15 @@ async function getGallery(){
   return LS.get('bk_gallery',[]);
 }
 async function getMedia(){
-  const fb=FB();if(fb.firebaseReady){try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'media'),fb.orderBy('addedAt','desc')));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){}}
+  const fb=FB();if(fb.firebaseReady){try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'media'),fb.orderBy('addedAt','desc')));return s.docs.map(d=>({id:d.id,_collection:'media',...d.data()}));}catch(e){
+    try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'gallery'),fb.orderBy('addedAt','desc')));return s.docs.map(d=>({id:d.id,_collection:'gallery',...d.data()})).filter(x=>x.mediaLibrary);}catch(_){}
+  }}
   return LS.get('bk_media',[]);
 }
 async function getIntroSlides(){
-  const fb=FB();if(fb.firebaseReady){try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'introSlides'),fb.orderBy('order','asc')));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){}}
+  const fb=FB();if(fb.firebaseReady){try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'introSlides'),fb.orderBy('order','asc')));return s.docs.map(d=>({id:d.id,_collection:'introSlides',...d.data()}));}catch(e){
+    try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'gallery'),fb.orderBy('addedAt','desc')));return s.docs.map(d=>({id:d.id,_collection:'gallery',...d.data()})).filter(x=>x.showInIntro||x.introOnly);}catch(_){}
+  }}
   return LS.get('bk_intro_slides',[]);
 }
 async function getServices(){
@@ -1101,8 +1105,11 @@ async function publishMedia(){
       const fd=new FormData();fd.append('file',file);fd.append('upload_preset','bekadavet');fd.append('folder','media');
       const res=await fetch('https://api.cloudinary.com/v1_1/dpeeodqlp/auto/upload',{method:'POST',body:fd});
       const data=await res.json();if(data.error)throw new Error(data.error.message);
-      const item={url:data.secure_url,cat:cat.slice(0,80),title:title.slice(0,120),favorite:false,showInGallery:false,showInIntro:false,publicId:data.public_id};
-      if(fb.firebaseReady)await fb.addDoc(fb.collection(fb.db,'media'),{...item,addedAt:fb.serverTimestamp()});
+      const item={url:data.secure_url,cat:cat.slice(0,80),title:title.slice(0,120),favorite:false,showInGallery:false,showInIntro:false,mediaLibrary:true,publicId:data.public_id};
+      if(fb.firebaseReady){
+        try{await fb.addDoc(fb.collection(fb.db,'media'),{...item,addedAt:fb.serverTimestamp()});}
+        catch(e){await fb.addDoc(fb.collection(fb.db,'gallery'),{...item,addedAt:fb.serverTimestamp()});}
+      }
       else{const l=LS.get('bk_media',[]);l.unshift({...item,id:Date.now()+'_'+success,addedAt:new Date().toISOString()});LS.set('bk_media',l);}
       success++;
     }catch(e){console.warn('Medya yükleme hatası:',e);}
@@ -1110,10 +1117,10 @@ async function publishMedia(){
   clearMediaQueue();document.getElementById('mediaCat').value='';document.getElementById('mediaTitle').value='';
   btn.disabled=false;btn.textContent='✓ Kütüphaneye Yükle';await renderMedia();toast(success+' medya yüklendi');
 }
-async function mediaToggle(id,field,value){
-  await updateContent('media','bk_media',id,{[field]:value});await renderMedia();
+async function mediaToggle(id,field,value,collectionName='media'){
+  await updateContent(collectionName,collectionName==='gallery'?'bk_gallery':'bk_media',id,{[field]:value});await renderMedia();
 }
-async function mediaSil(id){if(!confirm('Medya kütüphanesinden silinsin mi? Cloudinary dosyası korunur.'))return;await deleteContent('media','bk_media',id);await renderMedia();toast('Medya listeden kaldırıldı');}
+async function mediaSil(id,collectionName='media'){if(!confirm('Medya kütüphanesinden silinsin mi? Cloudinary dosyası korunur.'))return;await deleteContent(collectionName,collectionName==='gallery'?'bk_gallery':'bk_media',id);await renderMedia();toast('Medya listeden kaldırıldı');}
 async function renderMedia(){
   const all=await getMedia(),filter=document.getElementById('mediaFilter')?.value||'all';
   const list=all.filter(m=>filter==='all'||(filter==='favorite'&&m.favorite)||(filter==='intro'&&m.showInIntro)||(filter==='gallery'&&m.showInGallery)).sort((a,b)=>Number(b.favorite)-Number(a.favorite));
@@ -1123,10 +1130,10 @@ async function renderMedia(){
     <img class="up-thumb" src="${escAttr(safeUrl(m.url))}" loading="lazy"/>
     <div class="li-body"><div class="li-title">${m.favorite?'★ ':''}${esc(m.title||'Medya')}</div><div class="li-sub"><span>${esc(m.cat||'')}</span>${m.showInGallery?'<span class="badge badge-green">Vitrin</span>':''}${m.showInIntro?'<span class="badge badge-gold">Tanıtım</span>':''}</div></div>
     <div class="li-actions">
-      <button class="btn btn-outline btn-sm" onclick="mediaToggle('${jsStr(m.id)}','favorite',${!m.favorite})">${m.favorite?'★ Favori':'☆ Favori'}</button>
-      <button class="btn btn-outline btn-sm" onclick="mediaToggle('${jsStr(m.id)}','showInGallery',${!m.showInGallery})">${m.showInGallery?'Vitrinden Çıkar':'Vitrine Gönder'}</button>
-      <button class="btn btn-outline btn-sm" onclick="mediaToggle('${jsStr(m.id)}','showInIntro',${!m.showInIntro})">${m.showInIntro?'Tanıtımdan Çıkar':'Tanıtıma Gönder'}</button>
-      <button class="btn btn-red btn-sm" onclick="mediaSil('${jsStr(m.id)}')">✕</button>
+      <button class="btn btn-outline btn-sm" onclick="mediaToggle('${jsStr(m.id)}','favorite',${!m.favorite},'${jsStr(m._collection||'media')}')">${m.favorite?'★ Favori':'☆ Favori'}</button>
+      <button class="btn btn-outline btn-sm" onclick="mediaToggle('${jsStr(m.id)}','showInGallery',${!m.showInGallery},'${jsStr(m._collection||'media')}')">${m.showInGallery?'Vitrinden Çıkar':'Vitrine Gönder'}</button>
+      <button class="btn btn-outline btn-sm" onclick="mediaToggle('${jsStr(m.id)}','showInIntro',${!m.showInIntro},'${jsStr(m._collection||'media')}')">${m.showInIntro?'Tanıtımdan Çıkar':'Tanıtıma Gönder'}</button>
+      <button class="btn btn-red btn-sm" onclick="mediaSil('${jsStr(m.id)}','${jsStr(m._collection||'media')}')">✕</button>
     </div>
   </div>`).join('');
 }
@@ -1159,8 +1166,11 @@ async function publishIntroImgs(){
       const fd=new FormData();fd.append('file',file);fd.append('upload_preset','bekadavet');fd.append('folder','intro');
       const res=await fetch('https://api.cloudinary.com/v1_1/dpeeodqlp/auto/upload',{method:'POST',body:fd});
       const data=await res.json();if(data.error)throw new Error(data.error.message);
-      const item={url:data.secure_url,cat:cat.slice(0,80),title:title.slice(0,120),order:order++,active:true,publicId:data.public_id};
-      if(fb.firebaseReady)await fb.addDoc(fb.collection(fb.db,'introSlides'),{...item,addedAt:fb.serverTimestamp()});
+      const item={url:data.secure_url,cat:cat.slice(0,80),title:title.slice(0,120),order:order++,active:true,showInIntro:true,introOnly:true,publicId:data.public_id};
+      if(fb.firebaseReady){
+        try{await fb.addDoc(fb.collection(fb.db,'introSlides'),{...item,addedAt:fb.serverTimestamp()});}
+        catch(e){await fb.addDoc(fb.collection(fb.db,'gallery'),{...item,addedAt:fb.serverTimestamp()});}
+      }
       else{const l=LS.get('bk_intro_slides',[]);l.push({...item,id:Date.now()+'_'+order,addedAt:new Date().toISOString()});LS.set('bk_intro_slides',l);}
       success++;
     }catch(e){console.warn('Tanıtım yükleme hatası:',e);}
@@ -1175,22 +1185,35 @@ async function renderIntroSlides(){
     <img class="up-thumb" src="${escAttr(safeUrl(s.url))}" loading="lazy"/>
     <div class="li-body"><div class="li-title">${esc(s.title||'Tanıtım')}</div><div class="li-sub"><span>${esc(s.cat||'')}</span><span>Sıra ${i+1}</span></div></div>
     <div class="li-actions">
-      <button class="btn btn-outline btn-sm" onclick="introDuzenle('${jsStr(s.id)}')">Düzenle</button>
+      <button class="btn btn-outline btn-sm" onclick="introDuzenle('${jsStr(s.id)}','${jsStr(s._collection||'introSlides')}')">Düzenle</button>
       <button class="btn btn-outline btn-sm" onclick="introMove('${jsStr(s.id)}',-1)" ${i===0?'disabled':''}>↑</button>
       <button class="btn btn-outline btn-sm" onclick="introMove('${jsStr(s.id)}',1)" ${i===list.length-1?'disabled':''}>↓</button>
-      <button class="btn btn-red btn-sm" onclick="introSil('${jsStr(s.id)}')">✕</button>
+      <button class="btn btn-red btn-sm" onclick="introSil('${jsStr(s.id)}','${jsStr(s._collection||'introSlides')}')">✕</button>
     </div>
   </div>`).join('');
 }
-async function introMove(id,d){await moveContent('introSlides','bk_intro_slides',id,d);await renderIntroSlides();}
-async function introDuzenle(id){
+async function introMove(id,d){
+  const list=await getIntroSlides();
+  const i=list.findIndex(x=>x.id===id),j=i+d;if(i<0||j<0||j>=list.length)return;
+  const collectionName=list[i]._collection||'introSlides';
+  if(collectionName==='gallery'){
+    await Promise.all([
+      updateContent('gallery','bk_gallery',list[i].id,{order:j+1}),
+      updateContent('gallery','bk_gallery',list[j].id,{order:i+1})
+    ]);
+  }else{
+    await moveContent('introSlides','bk_intro_slides',id,d);
+  }
+  await renderIntroSlides();
+}
+async function introDuzenle(id,collectionName='introSlides'){
   const s=(await getIntroSlides()).find(x=>x.id===id);if(!s)return;
   const cat=prompt('Kategori',s.cat||'');if(cat===null)return;
   const title=prompt('Başlık',s.title||'');if(title===null)return;
-  await updateContent('introSlides','bk_intro_slides',id,{cat:cat.trim().slice(0,80),title:title.trim().slice(0,120)});
+  await updateContent(collectionName,collectionName==='gallery'?'bk_gallery':'bk_intro_slides',id,{cat:cat.trim().slice(0,80),title:title.trim().slice(0,120)});
   await renderIntroSlides();toast('Tanıtım bilgisi güncellendi');
 }
-async function introSil(id){if(!confirm('Tanıtım görseli silinsin mi?'))return;await deleteContent('introSlides','bk_intro_slides',id);await renderIntroSlides();toast('Tanıtım görseli silindi');}
+async function introSil(id,collectionName='introSlides'){if(!confirm('Tanıtım görseli silinsin mi?'))return;await deleteContent(collectionName,collectionName==='gallery'?'bk_gallery':'bk_intro_slides',id);await renderIntroSlides();toast('Tanıtım görseli silindi');}
 const imgDrop=document.getElementById('imgDrop');
 imgDrop.addEventListener('dragover',e=>{e.preventDefault();imgDrop.classList.add('over')});
 imgDrop.addEventListener('dragleave',()=>imgDrop.classList.remove('over'));

@@ -588,9 +588,11 @@ try {
 
   // Galeri çek
   const snap = await getDocs(query(collection(db,'gallery'), orderBy('addedAt','desc'), limit(40)));
-  const fbItems = snap.docs.map(d => d.data()).filter(d => d.url);
+  const fbItems = snap.docs.map(d => ({id:d.id,...d.data()})).filter(d => d.url);
   if(fbItems.length > 0){
     window._fbGallery = fbItems;
+    window._fbIntroFromGallery = fbItems.filter(d=>d.showInIntro||d.introOnly);
+    if(window._introBuilt) buildIntro();
     if(window._bandsBuilt) buildBands();
   }
   console.log('✅ Firebase bağlı, galeri:', fbItems.length);
@@ -602,7 +604,7 @@ try {
     window._fbMedia = mediaList;
     if(window._introBuilt) buildIntro();
     if(window._bandsBuilt) buildBands();
-  } catch(e) {}
+  } catch(e) { console.warn('Medya koleksiyonu okunamadı:', e.message); }
 
   // Tanıtım slaytlarını çek
   try {
@@ -612,7 +614,7 @@ try {
       window._fbIntroSlides = introList;
       if(window._introBuilt) buildIntro();
     }
-  } catch(e) {}
+  } catch(e) { console.warn('Tanıtım koleksiyonu okunamadı:', e.message); }
 
   // Hizmetleri çek
   try {
@@ -931,13 +933,14 @@ let iIdx=0, iTimer=null, iAudio=null, iPlaying=false;
 
 function getAllSlides(){
   const selected=(window._fbMedia||[]).filter(m=>m.showInIntro).sort((a,b)=>Number(b.favorite)-Number(a.favorite));
+  const gallerySlides=(window._fbIntroFromGallery||[]).sort((a,b)=>Number(b.favorite)-Number(a.favorite));
   const fbSlides=window._fbIntroSlides&&window._fbIntroSlides.length?window._fbIntroSlides:[];
   try{
     const saved=JSON.parse(localStorage.getItem('bk_intro_slides')||'[]');
     const localSlides=saved.length?saved.sort((a,b)=>(a.order||0)-(b.order||0)):[];
-    return [...selected,...fbSlides,...localSlides];
+    return [...selected,...gallerySlides,...fbSlides,...localSlides];
   }catch(e){}
-  return [...selected,...fbSlides];
+  return [...selected,...gallerySlides,...fbSlides];
 }
 
 function getServices(){
