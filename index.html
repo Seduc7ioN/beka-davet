@@ -149,6 +149,13 @@ body.music-active{ padding-bottom:64px; }
 }
 .i-title em{font-style:italic;color:var(--gold2);display:block}
 .i-title.on{opacity:1;transform:none}
+.i-title img{display:none!important}
+.i-title::after{
+  content:'Beka Davet';display:block;
+  font-size:clamp(1.65rem,3.5vw,2.75rem);font-weight:300;line-height:1;
+  letter-spacing:.14em;color:rgba(255,248,245,.82);
+  text-shadow:0 2px 18px rgba(0,0,0,.75);
+}
 .i-sub{
   font-size:.8rem;letter-spacing:.14em;color:rgba(255,255,255,.5);
   margin-top:22px;font-weight:300;opacity:0;transition:all .9s .9s;
@@ -588,6 +595,35 @@ try {
   }
   console.log('✅ Firebase bağlı, galeri:', fbItems.length);
 
+  // Merkezi medya kütüphanesini çek
+  try {
+    const mediaSnap = await getDocs(query(collection(db,'media'), orderBy('addedAt','desc'), limit(100)));
+    const mediaList = mediaSnap.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m.url);
+    window._fbMedia = mediaList;
+    if(window._introBuilt) buildIntro();
+    if(window._bandsBuilt) buildBands();
+  } catch(e) {}
+
+  // Tanıtım slaytlarını çek
+  try {
+    const introSnap = await getDocs(query(collection(db,'introSlides'), orderBy('order','asc'), limit(20)));
+    const introList = introSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.url&&s.active!==false);
+    if(introList.length > 0){
+      window._fbIntroSlides = introList;
+      if(window._introBuilt) buildIntro();
+    }
+  } catch(e) {}
+
+  // Hizmetleri çek
+  try {
+    const svcSnap = await getDocs(query(collection(db,'services'), orderBy('order','asc'), limit(20)));
+    const svcList = svcSnap.docs.map(d=>({id:d.id,...d.data()})).filter(s=>s.active!==false);
+    if(svcList.length > 0){
+      window._fbServices = svcList;
+      if(window._servicesBuilt) buildServices();
+    }
+  } catch(e) {}
+
   // Müzik çek
   try {
     const muzSnap = await getDocs(query(collection(db,'music'), orderBy('addedAt','desc'), limit(20)));
@@ -700,11 +736,7 @@ try {
     <h2 class="s-title">Özel <em>Hizmetlerimiz</em></h2>
     <p class="s-sub">Her organizasyon bir hikâyedir. Sizin hikâyenizi en güzel şekilde anlatmak için buradayız.</p>
   </div>
-  <div class="svc-grid reveal">
-    <div class="svc-card"><span class="svc-n">01</span><span class="svc-icon">💍</span><div class="svc-line"></div><h3 class="svc-ttl">Nişan & Söz Töreni</h3><p class="svc-txt">En özel "evet" anını rüya gibi bir atmosferde kutlayın.</p><ul class="svc-ul"><li>Konsept & Dekorasyon Tasarımı</li><li>Çiçek Aranjmanı</li><li>İkram & Pasta Koordinasyonu</li><li>Fotoğraf & Video Planlaması</li><li>Davetiye Tasarımı</li></ul></div>
-    <div class="svc-card"><span class="svc-n">02</span><span class="svc-icon">🪷</span><div class="svc-line"></div><h3 class="svc-ttl">Kına Gecesi</h3><p class="svc-txt">Geleneği modernlikle harmanlayarak unutulmaz bir gece yaratıyoruz.</p><ul class="svc-ul"><li>Geleneksel & Modern Dekor</li><li>Kına Tepsisi Koordinasyonu</li><li>Müzik & Eğlence Programı</li><li>Kına Mumu & Aksesuar</li><li>Misafir Ağırlama Planı</li></ul></div>
-    <div class="svc-card"><span class="svc-n">03</span><span class="svc-icon">🎂</span><div class="svc-line"></div><h3 class="svc-ttl">Doğum Günü & Etkinlik</h3><p class="svc-txt">Temasal partilerden kurumsal etkinliklere her organizasyon özeldir.</p><ul class="svc-ul"><li>Temasal Dekorasyon</li><li>Balon & Pano Tasarımı</li><li>Özel Pasta Koordinasyonu</li><li>Sürpriz Organizasyonu</li><li>Kurumsal Etkinlik Yönetimi</li></ul></div>
-  </div>
+  <div class="svc-grid reveal" id="svcGrid"></div>
 </section>
 
 <!-- ══ PAKETLER ══ -->
@@ -871,28 +903,15 @@ const SLIDE_GRADIENTS = [
   'linear-gradient(160deg,#1a1420 0%,#100e18 40%,#281c2c 100%)',
 ];
 
-const SLIDES_DEFAULT = [
-  {url:'https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80&fit=crop&auto=format',cat:'Nişan',title:'Bahçe Nişanı'},
-  {url:'https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?w=1200&q=80&fit=crop&auto=format',cat:'Kına',title:'Geleneksel Kına'},
-  {url:'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=1200&q=80&fit=crop&auto=format',cat:'Doğum Günü',title:'Özel Kutlama'},
-  {url:'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=1200&q=80&fit=crop&auto=format',cat:'Dekorasyon',title:'Masa Tasarımı'},
-  {url:'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=1200&q=80&fit=crop&auto=format',cat:'İkram',title:'Pasta Tasarımı'},
-  {url:'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=1200&q=80&fit=crop&auto=format',cat:'Nişan',title:'İç Mekan Töreni'},
-];
-const BAND_DEFAULT = [
-  {url:'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=75&fit=crop&auto=format',cat:'Nişan',title:'Bahçe Nişanı'},
-  {url:'https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&q=75&fit=crop&auto=format',cat:'Doğum Günü',title:'Özel Kutlama'},
-  {url:'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&q=75&fit=crop&auto=format',cat:'Dekorasyon',title:'Masa Tasarımı'},
-  {url:'https://images.unsplash.com/photo-1478146896981-b80fe463b330?w=600&q=75&fit=crop&auto=format',cat:'İkram',title:'Pasta & Çikolata'},
-  {url:'https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?w=600&q=75&fit=crop&auto=format',cat:'Kına',title:'Kına Gecesi'},
-  {url:'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=600&q=75&fit=crop&auto=format',cat:'Nişan',title:'Salon Töreni'},
-  {url:'https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=600&q=75&fit=crop&auto=format',cat:'Etkinlik',title:'Özel Etkinlik'},
-  {url:'https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=75&fit=crop&auto=format',cat:'Nişan',title:'Gelin Çiçekleri'},
-];
 const PACKAGE_DEFAULT = [
   {name:'Başlangıç',price:'Fiyat görüşülür',desc:'Küçük aile kutlamaları için konsept, temel dekor ve masa düzeni.'},
   {name:'Premium',price:'İhtiyaca göre',desc:'Nişan, kına ve özel günler için detaylı konsept, dekor ve süreç planlama.'},
   {name:'Özel Tasarım',price:'Teklif alın',desc:'Mekan, davetli sayısı ve tema tamamen size göre kurgulanır.'}
+];
+const SERVICE_DEFAULT = [
+  {name:'Nişan & Söz Töreni',icon:'💍',desc:'En özel "evet" anını rüya gibi bir atmosferde kutlayın.',features:['Konsept & Dekorasyon Tasarımı','Çiçek Aranjmanı','İkram & Pasta Koordinasyonu','Fotoğraf & Video Planlaması','Davetiye Tasarımı']},
+  {name:'Kına Gecesi',icon:'🪷',desc:'Geleneği modernlikle harmanlayarak unutulmaz bir gece yaratıyoruz.',features:['Geleneksel & Modern Dekor','Kına Tepsisi Koordinasyonu','Müzik & Eğlence Programı','Kına Mumu & Aksesuar','Misafir Ağırlama Planı']},
+  {name:'Doğum Günü & Etkinlik',icon:'🎂',desc:'Temasal partilerden kurumsal etkinliklere her organizasyon özeldir.',features:['Temasal Dekorasyon','Balon & Pano Tasarımı','Özel Pasta Koordinasyonu','Sürpriz Organizasyonu','Kurumsal Etkinlik Yönetimi']}
 ];
 
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -900,9 +919,9 @@ const escAttr=v=>esc(v).replace(/`/g,'&#96;');
 const safeUrl=v=>{const s=String(v??'').trim();return /^(https:|blob:|data:image\/)/i.test(s)?s:'';};
 
 function getSavedGallery(){
-  // Firebase'den yüklenen galeriye öncelik ver
-  if(window._fbGallery && window._fbGallery.length > 0) return window._fbGallery;
-  try{return JSON.parse(localStorage.getItem('bk_gallery')||'[]');}catch(e){return[];}
+  const legacy=window._fbGallery&&window._fbGallery.length?window._fbGallery:(()=>{try{return JSON.parse(localStorage.getItem('bk_gallery')||'[]');}catch(e){return[];}})();
+  const selected=(window._fbMedia||[]).filter(m=>m.showInGallery).sort((a,b)=>Number(b.favorite)-Number(a.favorite));
+  return [...legacy,...selected];
 }
 
 // ══ INTRO ══
@@ -911,8 +930,35 @@ const KB = ['kb1','kb2','kb3','kb4'];
 let iIdx=0, iTimer=null, iAudio=null, iPlaying=false;
 
 function getAllSlides(){
-  const saved = getSavedGallery().map(g=>({url:g.url,cat:g.cat,title:g.title}));
-  return [...SLIDES_DEFAULT,...saved];
+  const selected=(window._fbMedia||[]).filter(m=>m.showInIntro).sort((a,b)=>Number(b.favorite)-Number(a.favorite));
+  const fbSlides=window._fbIntroSlides&&window._fbIntroSlides.length?window._fbIntroSlides:[];
+  try{
+    const saved=JSON.parse(localStorage.getItem('bk_intro_slides')||'[]');
+    const localSlides=saved.length?saved.sort((a,b)=>(a.order||0)-(b.order||0)):[];
+    return [...selected,...fbSlides,...localSlides];
+  }catch(e){}
+  return [...selected,...fbSlides];
+}
+
+function getServices(){
+  if(window._fbServices&&window._fbServices.length)return window._fbServices;
+  try{
+    const saved=JSON.parse(localStorage.getItem('bk_services')||'[]');
+    if(saved.length)return saved.sort((a,b)=>(a.order||0)-(b.order||0));
+  }catch(e){}
+  return SERVICE_DEFAULT;
+}
+
+function buildServices(){
+  const grid=document.getElementById('svcGrid');if(!grid)return;
+  grid.innerHTML=getServices().map((s,i)=>`<div class="svc-card">
+    <span class="svc-n">${String(i+1).padStart(2,'0')}</span>
+    <span class="svc-icon">${esc(s.icon||'✦')}</span>
+    <div class="svc-line"></div>
+    <h3 class="svc-ttl">${esc(s.name||'Hizmet')}</h3>
+    <p class="svc-txt">${esc(s.desc||'')}</p>
+    <ul class="svc-ul">${(Array.isArray(s.features)?s.features:[]).map(f=>`<li>${esc(f)}</li>`).join('')}</ul>
+  </div>`).join('');
 }
 
 function getPackages(){
@@ -946,6 +992,13 @@ function buildPackages(){
 function buildIntro(){
   const slides = getAllSlides();
   const container = document.getElementById('iSlides');
+  if(!slides.length){
+    container.innerHTML='';
+    document.getElementById('iDots').innerHTML='';
+    document.getElementById('intro').classList.add('hidden');
+    return;
+  }
+  document.getElementById('intro').classList.remove('hidden');
   container.innerHTML = slides.map((s,i)=>{
     const grad = SLIDE_GRADIENTS[i % SLIDE_GRADIENTS.length];
     const url = escAttr(safeUrl(s.url));
@@ -1104,8 +1157,8 @@ function stopViz(){clearInterval(vizInt);document.querySelectorAll('.mb-vb').for
 
 // ══ BANDS ══
 function buildBands(){
-  const saved=getSavedGallery().map(g=>({url:g.url,cat:g.cat,title:g.title}));
-  const all=[...BAND_DEFAULT,...saved];
+  const all=getSavedGallery().map(g=>({url:g.url,cat:g.cat,title:g.title}));
+  if(!all.length){renderBand('band1',[]);renderBand('band2',[]);return;}
   const h=Math.ceil(all.length/2);
   renderBand('band1',[...all.slice(0,h),...all.slice(0,h)]);
   const row2=all.slice(h);
@@ -1206,8 +1259,11 @@ async function sendForm(){
 // ══ INIT ══
 buildIntro();
 buildBands();
+buildServices();
 buildPackages();
+window._introBuilt = true;
 window._bandsBuilt = true;
+window._servicesBuilt = true;
 window._packagesBuilt = true;
 
 // Pre-load intro images so they show instantly when clicked

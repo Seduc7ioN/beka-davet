@@ -54,6 +54,21 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /media/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /introSlides/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /services/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /music/{id} {
       allow read: if true;
       allow write: if isAdmin();
