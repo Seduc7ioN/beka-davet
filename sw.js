@@ -1,4 +1,4 @@
-const CACHE = 'beka-davet-v2';
+const CACHE = 'beka-davet-v3';
 const ASSETS = [
   '/',
   '/index.html',
