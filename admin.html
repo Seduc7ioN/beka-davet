@@ -413,6 +413,11 @@ body{
 .setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(184,151,90,.06)}
 .setting-label{font-size:.82rem;color:rgba(255,255,255,.8)}
 .setting-sub{font-size:.65rem;color:var(--dim);margin-top:2px}
+.content-group{border-top:1px solid rgba(184,151,90,.08);padding-top:12px;margin-top:14px}
+.content-group:first-child{border-top:none;padding-top:0;margin-top:0}
+.content-group-title{font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);opacity:.8;margin:0 0 10px}
+.content-grid{display:grid;grid-template-columns:1fr;gap:10px}
+.site-content-actions{position:sticky;bottom:calc(var(--tab-h) + var(--safe-bottom) + 8px);z-index:4;background:linear-gradient(to top,var(--dark2) 70%,rgba(24,19,16,0));padding-top:12px;margin-top:12px}
 
 /* ── TOAST ── */
 .toast{
@@ -659,6 +664,17 @@ body{
 
     <!-- PANEL: AYARLAR -->
     <div class="panel" id="p-ayarlar">
+      <div class="card">
+        <div class="card-title">Site İçeriği</div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          Ana sitedeki sabit yazıları buradan değiştirin. <strong style="color:var(--gold)">Siteye Yansıt</strong> dediğinizde canlı site ve PWA yeni içerikleri Firestore'dan okur.
+        </div>
+        <div id="siteContentFields"><div class="empty-state"><span class="empty-icon">✍️</span><span class="empty-txt">İçerikler yükleniyor</span></div></div>
+        <div class="site-content-actions">
+          <button class="btn btn-gold" onclick="saveSiteContent()" id="btnSiteContentSave">✓ Siteye Yansıt</button>
+          <button class="btn btn-outline" onclick="renderSiteContentForm()" style="margin-top:8px">Yenile</button>
+        </div>
+      </div>
       <!-- Teklif talepleri -->
       <div class="card">
         <div class="card-title">Teklif Talepleri</div>
@@ -837,6 +853,86 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const escAttr=v=>esc(v).replace(/`/g,'&#96;');
 const jsStr=v=>String(v??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ');
 const safeUrl=v=>{const s=String(v??'').trim();return /^(https:|blob:|data:image\/)/i.test(s)?s:'';};
+const SITE_CONTENT_GROUPS=[
+  {title:'SEO ve Genel',items:[
+    ['pageTitle','Sayfa Başlığı','Beka Davet & Organizasyon | Nişan, Kına, Doğum Günü Organizasyonu'],
+    ['metaDescription','SEO Açıklaması','Beka Davet & Organizasyon ile hayalinizdeki nişan, kına gecesi, doğum günü ve özel etkinlik organizasyonlarını gerçeğe dönüştürüyoruz. Profesyonel dekor, tasarım ve planlama hizmetleri.',true],
+    ['footerCopy','Footer Telif Yazısı','© 2025 Beka Davet Organizasyon. Tüm hakları saklıdır.']
+  ]},
+  {title:'Navigasyon ve Hero',items:[
+    ['navVitrin','Menü: Vitrin','Vitrin'],['navHizmetler','Menü: Hizmetler','Hizmetler'],['navPaketler','Menü: Paketler','Paketler'],
+    ['navSurec','Menü: Süreç','Süreç'],['navHakkimizda','Menü: Hakkımızda','Hakkımızda'],['navIletisim','Menü: İletişim','İletişim'],
+    ['navCta','Menü Butonu','Teklif Al'],['introPlay','Tanıtım Butonu','Tanıtımı İzle'],['introPlayAccent','Tanıtım Butonu Küçük Yazı','✦ Sesli'],
+    ['introEyebrow','Tanıtım Üst Yazı','Organizasyon'],['heroEyebrow','Hero Üst Yazı','Organizasyon & Tasarım'],
+    ['heroTitle','Hero Başlık','Hayalinizdeki Anı Yaratıyoruz'],['heroSubtitle','Hero Açıklama','Nişandan kınaya, doğum gününden özel etkinliklere — her detayı titizlikle planlıyor, ömür boyu hatırlanacak anlar yaratıyoruz.',true],
+    ['heroPrimary','Hero Ana Buton','Ücretsiz Danışma'],['heroSecondary','Hero İkinci Buton','Vitrine Bak']
+  ]},
+  {title:'Sayaçlar',items:[
+    ['stat1Number','Sayaç 1 Sayı','10'],['stat1Label','Sayaç 1 Yazı','Yıllık Deneyim'],
+    ['stat2Number','Sayaç 2 Sayı','500'],['stat2Label','Sayaç 2 Yazı','Organizasyon'],
+    ['stat3Number','Sayaç 3 Sayı','100'],['stat3Label','Sayaç 3 Yazı','% Memnuniyet'],
+    ['stat4Number','Sayaç 4 Sayı','7'],['stat4Label','Sayaç 4 Yazı','Gün / 24 Saat']
+  ]},
+  {title:'Bölüm Başlıkları',items:[
+    ['vitrinTag','Vitrin Etiketi','Gerçekleşen Aktiviteler'],['vitrinTitle','Vitrin Başlığı','Canlı Vitrinimiz'],['vitrinSubtitle','Vitrin Açıklaması','Organizasyonlarımızdan özel kareler.'],
+    ['servicesTag','Hizmet Etiketi','Ne Sunuyoruz'],['servicesTitle','Hizmet Başlığı','Özel Hizmetlerimiz'],['servicesSubtitle','Hizmet Açıklaması','Her organizasyon bir hikâyedir. Sizin hikâyenizi en güzel şekilde anlatmak için buradayız.',true],
+    ['packagesTag','Paket Etiketi','Paketler'],['packagesTitle','Paket Başlığı','Bütçenize Uygun Çözümler'],['packagesSubtitle','Paket Açıklaması','Başlangıç paketleri fikir vermesi içindir; her organizasyonu ihtiyaca göre netleştiriyoruz.',true],
+    ['faqTag','SSS Etiketi','Merak Edilenler'],['faqTitle','SSS Başlığı','Sık Sorulan Sorular'],
+    ['reviewsTitle','Yorum Başlığı','Mutlu Misafirlerimiz'],['reviewsSubtitle','Yorum Açıklaması','Yalnızca 5 yıldızlı memnuniyet yorumları bu alanda otomatik olarak döner.'],['reviewsCta','Yorum Butonu','Google\'da Gör'],
+    ['processTag','Süreç Etiketi','Nasıl Çalışırız'],['processTitle','Süreç Başlığı','Dört Adımda Mükemmellik'],['processSubtitle','Süreç Açıklaması','Organizasyonunuzun her aşamasında yanınızdayız.'],
+    ['aboutTag','Hakkımızda Etiketi','Biz Kimiz'],['aboutTitle','Hakkımızda Başlığı','Tutkudan Doğduk'],
+    ['contactTag','İletişim Etiketi','Bize Ulaşın'],['contactTitle','İletişim Başlığı','Hayalinizi Anlatın'],['contactSubtitle','İletişim Açıklaması','Ücretsiz danışma için bize yazın ya da arayın.']
+  ]},
+  {title:'SSS Kartları',items:[
+    ['faq1Title','SSS 1 Başlık','Ne kadar önce iletişime geçmeliyiz?'],['faq1Text','SSS 1 Cevap','Tarih uygunluğu ve hazırlık süresi için mümkünse etkinlikten 4-8 hafta önce görüşmenizi öneriyoruz.',true],
+    ['faq2Title','SSS 2 Başlık','Paketler değiştirilebilir mi?'],['faq2Text','SSS 2 Cevap','Evet. Davetli sayısı, mekan, tema ve bütçeye göre tüm içerikleri birlikte şekillendiriyoruz.',true],
+    ['faq3Title','SSS 3 Başlık','Müşterilerimiz Ne Diyor?'],['faq3Text','SSS 3 Metin','“Her detayla ilgilendiler, bize sadece günün keyfini çıkarmak kaldı. İyi ki Beka Davet.”',true]
+  ]},
+  {title:'Süreç',items:[
+    ['process1Title','Adım 1 Başlık','İlk Görüşme'],['process1Text','Adım 1 Metin','Hayallerinizi dinliyor, bütçe ve tarih belirliyoruz.'],
+    ['process2Title','Adım 2 Başlık','Konsept Tasarım'],['process2Text','Adım 2 Metin','Size özel tema ve dekorasyon konsepti hazırlıyoruz.'],
+    ['process3Title','Adım 3 Başlık','Planlama & Hazırlık'],['process3Text','Adım 3 Metin','Tedarikçi koordinasyonu ve kurulum eksiksiz yapılır.'],
+    ['process4Title','Adım 4 Başlık','Muhteşem Gün'],['process4Text','Adım 4 Metin','Siz keyfini çıkarın; geri kalanı biz hallederiz.']
+  ]},
+  {title:'Hakkımızda',items:[
+    ['aboutP1','Hakkımızda 1. Paragraf','Beka Davet olarak, özel günlerinizin kalıcı anılara dönüşmesi için tutkuyla çalışıyoruz. Her organizasyonda sizi dinliyor, hayallerinizi anlıyor ve en ince detayına kadar titizlikle planlıyoruz.',true],
+    ['aboutP2','Hakkımızda 2. Paragraf','Nişandan kınaya, doğum gününden kurumsal etkinliklere kadar geniş hizmet yelpazemizle yanınızdayız. Yılların deneyimi ve sonsuz yaratıcılığımızla her bütçeye uygun çözümler üretiyoruz.',true],
+    ['aboutSignature','İmza','Beka Davet Ailesi']
+  ]},
+  {title:'İletişim',items:[
+    ['phoneLabel','Telefon Etiketi','Telefon'],['phoneDisplay','Telefon Görünen','0535 033 06 45'],['phoneHref','Telefon Link Değeri','05350330645'],
+    ['whatsappLabel','WhatsApp Etiketi','WhatsApp'],['whatsappDisplay','WhatsApp Görünen','Mesaj Gönder →'],['whatsappUrl','WhatsApp Linki','https://wa.me/905350330645'],
+    ['instagramLabel','Instagram Etiketi','Instagram'],['instagramDisplay','Instagram Görünen','@beka_davet'],['instagramUrl','Instagram Linki','https://www.instagram.com/beka_davet'],
+    ['mapLabel','Konum Etiketi','Konum'],['mapDisplay','Konum Görünen','Haritada Görüntüle →'],['mapUrl','Harita Linki','https://maps.app.goo.gl/1fnvAXTFndb7xaXh9'],
+    ['hoursLabel','Saat Etiketi','Çalışma Saatleri'],['hoursDisplay','Saat Görünen','Her Gün 09:00 – 20:00'],
+    ['mapTitle','Harita Kart Başlığı','Beka Davet Konumu'],['mapSubtitle','Harita Kart Açıklaması','Yol tarifi için haritada açın'],['mapButton','Harita Butonu','Yol Tarifi Al']
+  ]},
+  {title:'Form',items:[
+    ['formNameLabel','Form Ad Soyad Etiketi','Ad Soyad'],['formNamePlaceholder','Form Ad Soyad Placeholder','Adınız'],
+    ['formPhoneLabel','Form Telefon Etiketi','Telefon'],['formPhonePlaceholder','Form Telefon Placeholder','05XX XXX XX XX'],
+    ['formTypeLabel','Form Tür Etiketi','Organizasyon Türü'],['formDateLabel','Form Tarih Etiketi','Etkinlik Tarihi'],
+    ['formBudgetLabel','Form Bütçe Etiketi','Bütçe Aralığı'],['formSourceLabel','Form Kaynak Etiketi','Bizi Nereden Duydunuz?'],
+    ['formMessageLabel','Form Mesaj Etiketi','Mesaj'],['formMessagePlaceholder','Form Mesaj Placeholder','Hayalinizdeki organizasyon hakkında bize anlatın...',true],
+    ['formButton','Form Butonu','Teklif Talep Et'],['formSuccess','Form Başarı Mesajı','✓ Mesajınız alındı. En kısa sürede iletişime geçeceğiz.']
+  ]},
+  {title:'Footer',items:[
+    ['footerDesc','Footer Açıklama','Her özel günü unutulmaz kılıyoruz. Profesyonel organizasyon ve tasarım hizmetleri.'],
+    ['footerServicesTitle','Footer Hizmetler Başlığı','Hizmetler'],['footerContactTitle','Footer İletişim Başlığı','İletişim'],
+    ['footerService1','Footer Hizmet 1','Nişan & Söz Töreni'],['footerService2','Footer Hizmet 2','Kına Gecesi'],['footerService3','Footer Hizmet 3','Doğum Günü'],['footerService4','Footer Hizmet 4','Özel Etkinlik']
+  ]},
+  {title:'5 Yıldızlı Yorumlar',items:[
+    ['review1Name','Yorum 1 İsim','Elif & Mert'],['review1Meta','Yorum 1 Tür','Nişan Organizasyonu'],['review1Text','Yorum 1 Metin','Her şey tam konuştuğumuz gibi hazırdı. Renkler, masa düzeni ve ilgi gerçekten çok özenliydi.',true],
+    ['review2Name','Yorum 2 İsim','Seda Hanım'],['review2Meta','Yorum 2 Tür','Kına Gecesi'],['review2Text','Yorum 2 Metin','Kına gecemizde hiçbir detayı düşünmek zorunda kalmadık. Ekip çok sakin, hızlı ve çözüm odaklıydı.',true],
+    ['review3Name','Yorum 3 İsim','Ayşe Hanım'],['review3Meta','Yorum 3 Tür','Doğum Günü'],['review3Text','Yorum 3 Metin','Doğum günü konsepti fotoğraflarda bile harika durdu. Çocuğumuz ve misafirlerimiz çok mutlu ayrıldı.',true],
+    ['review4Name','Yorum 4 İsim','Burak Bey'],['review4Meta','Yorum 4 Tür','Özel Etkinlik'],['review4Text','Yorum 4 Metin','Son dakika değişikliklerinde bile bizi yormadan her şeyi toparladılar. Gönül rahatlığıyla öneririm.',true],
+    ['review5Name','Yorum 5 İsim','Zeynep Hanım'],['review5Meta','Yorum 5 Tür','Söz Organizasyonu'],['review5Text','Yorum 5 Metin','Dekorasyon zarif, iletişim çok iyiydi. Organizasyon boyunca yanımızda olduklarını hissettirdiler.',true],
+    ['review6Name','Yorum 6 İsim','Derya & Emre'],['review6Meta','Yorum 6 Tür','Davet Organizasyonu'],['review6Text','Yorum 6 Metin','Mekan girişinden sahne alanına kadar her köşe çok şıktı. Misafirlerimiz hâlâ konuşuyor.',true],
+    ['review7Name','Yorum 7 İsim','Melis Hanım'],['review7Meta','Yorum 7 Tür','Konsept Tasarım'],['review7Text','Yorum 7 Metin','Bütçemize göre en doğru çözümü sundular. Hem şık hem de içimize sinen bir organizasyon oldu.',true],
+    ['review8Name','Yorum 8 İsim','Kübra Hanım'],['review8Meta','Yorum 8 Tür','Nişan Masası'],['review8Text','Yorum 8 Metin','Fotoğraf alanı ve masa detayları tam istediğimiz gibiydi. Profesyonel ama samimi bir ekip.',true],
+    ['review9Name','Yorum 9 İsim','Can Bey'],['review9Meta','Yorum 9 Tür','Kurumsal Etkinlik'],['review9Text','Yorum 9 Metin','İlk görüşmeden kurulum bitene kadar iletişimleri çok netti. İçimiz rahat şekilde teslim ettik.',true]
+  ]}
+];
+const SITE_CONTENT_DEFAULTS=SITE_CONTENT_GROUPS.reduce((a,g)=>{g.items.forEach(i=>{a[i[0]]=i[2];});return a;},{});
 function showApp(){
   document.getElementById('loginWrap').classList.add('gone');
   document.getElementById('app').classList.add('visible');
@@ -894,7 +990,7 @@ function goTab(name,el){
   if(name==='musteriler')renderCRM();
   if(name==='vitrin'){renderMedia();renderIntroSlides();renderGallery();renderMuz();}
   if(name==='ajanda')initAjanda();
-  if(name==='ayarlar'){renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();loadPushSettings();}
+  if(name==='ayarlar'){renderSiteContentForm();renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();loadPushSettings();}
   if(name==='home')renderDashboard();
 }
 
@@ -1185,6 +1281,24 @@ async function getAjanda(){
 async function getPackages(){
   const fb=FB();if(fb.firebaseReady){try{const s=await fb.getDocs(fb.query(fb.collection(fb.db,'packages'),fb.orderBy('order','asc')));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){}}
   return LS.get('bk_packages',[]);
+}
+async function getSiteContent(){
+  const fb=FB();
+  if(fb.firebaseReady){
+    try{
+      const s=await fb.getDoc(fb.doc(fb.db,'settings','siteContent'));
+      if(s.exists())return {...SITE_CONTENT_DEFAULTS,...(s.data().fields||{})};
+    }catch(e){}
+  }
+  return {...SITE_CONTENT_DEFAULTS,...LS.get('bk_site_content',{})};
+}
+async function setSiteContent(data){
+  const fb=FB();
+  if(fb.firebaseReady){
+    await fb.setDoc(fb.doc(fb.db,'settings','siteContent'),{fields:data,updatedAt:fb.serverTimestamp()},{merge:true});
+    return;
+  }
+  LS.set('bk_site_content',data);
 }
 async function addPackage(data){
   const fb=FB();if(fb.firebaseReady){try{const r=await fb.addDoc(fb.collection(fb.db,'packages'),{...data,addedAt:fb.serverTimestamp()});return r.id;}catch(e){}}
@@ -1848,6 +1962,34 @@ async function paketSil(id){
   if(!confirm('Paket silinsin mi?'))return;
   await delPackageDB(id);await renderPackages();toast('Paket silindi');
 }
+
+async function renderSiteContentForm(){
+  const wrap=document.getElementById('siteContentFields');
+  if(!wrap)return;
+  const data=await getSiteContent();
+  wrap.innerHTML=SITE_CONTENT_GROUPS.map(group=>`<div class="content-group">
+    <div class="content-group-title">${esc(group.title)}</div>
+    <div class="content-grid">${group.items.map(([key,label,def,multi])=>`<div class="fg">
+      <label>${esc(label)}</label>
+      ${multi?`<textarea data-site-key="${escAttr(key)}">${esc(data[key]??def)}</textarea>`:`<input type="text" data-site-key="${escAttr(key)}" value="${escAttr(data[key]??def)}"/>`}
+    </div>`).join('')}</div>
+  </div>`).join('');
+}
+async function saveSiteContent(){
+  const btn=document.getElementById('btnSiteContentSave');
+  const fields=document.querySelectorAll('[data-site-key]');
+  const data={};
+  fields.forEach(el=>{data[el.dataset.siteKey]=el.value.trim();});
+  btn.disabled=true;btn.textContent='Yayınlanıyor...';
+  try{
+    await setSiteContent(data);
+    toast('Site içeriği yayına alındı');
+  }catch(e){
+    toast('İçerik kaydedilemedi',3600);
+  }finally{
+    btn.disabled=false;btn.textContent='✓ Siteye Yansıt';
+  }
+}
 function csvCell(v){return `"${String(v??'').replace(/"/g,'""')}"`;}
 function downloadCSV(name,rows){
   const csv=rows.map(r=>r.map(csvCell).join(',')).join('\n');
@@ -1925,7 +2067,7 @@ function printContract(){if(!document.getElementById('contractDoc').innerHTML)re
 
 async function initApp(){
   updateFBStatus();
-  await Promise.all([renderDashboard(),renderCRM(),renderMedia(),renderIntroSlides(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderServices(),renderReports(),updateBadges(),loadPushSettings()]);
+  await Promise.all([renderDashboard(),renderCRM(),renderMedia(),renderIntroSlides(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderServices(),renderReports(),updateBadges(),loadPushSettings(),renderSiteContentForm()]);
 }
 window._appReady=()=>{updateFBStatus();if(document.getElementById('app').classList.contains('visible'))initApp();};
 window.addEventListener('authready',()=>{if(window._authUser&&!document.getElementById('app').classList.contains('visible'))showApp();});

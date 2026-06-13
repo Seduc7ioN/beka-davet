@@ -80,7 +80,7 @@ service cloud.firestore {
     }
 
     match /settings/{id} {
-      allow read: if id == 'activeMusic' || isAdmin();
+      allow read: if id == 'activeMusic' || id == 'siteContent' || isAdmin();
       allow write: if isAdmin();
     }
 

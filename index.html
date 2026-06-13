@@ -663,7 +663,7 @@ html.is-standalone .band-item:hover img{transform:translateZ(0)}
 <!-- Firebase SDK — vitrin + form -->
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, getDocs, addDoc, query, orderBy, limit, serverTimestamp }
+import { getFirestore, collection, getDocs, addDoc, doc, getDoc, query, orderBy, limit, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const firebaseConfig = {
@@ -683,8 +683,17 @@ try {
   // window._fb global olarak tüm fonksiyonlar kullanabilsin
   window._fb = {
     db, firebaseReady: true,
-    collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp
+    collection, addDoc, getDocs, doc, getDoc, query, orderBy, limit, serverTimestamp
   };
+
+  // Yayındaki site metinlerini çek
+  try {
+    const contentSnap = await getDoc(doc(db,'settings','siteContent'));
+    if(contentSnap.exists()){
+      window._siteContent = contentSnap.data().fields || {};
+      if(typeof window.applySiteContent === 'function') window.applySiteContent();
+    }
+  } catch(e) { console.warn('Site içerikleri okunamadı:', e.message); }
 
   // Galeri çek
   const snap = await getDocs(query(collection(db,'gallery'), orderBy('addedAt','desc'), limit(40)));
@@ -1044,6 +1053,105 @@ const SERVICE_DEFAULT = [
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const escAttr=v=>esc(v).replace(/`/g,'&#96;');
 const safeUrl=v=>{const s=String(v??'').trim();return /^(https:|blob:|data:image\/)/i.test(s)?s:'';};
+const siteText=(key,fallback='')=>{
+  const v=window._siteContent&&window._siteContent[key];
+  return typeof v==='string'&&v.trim()?v.trim():fallback;
+};
+function setText(selector,key){
+  const value=siteText(key);
+  if(!value)return;
+  document.querySelectorAll(selector).forEach(el=>{el.textContent=value;});
+}
+function setAttr(selector,attr,key,format){
+  const value=siteText(key);
+  if(!value)return;
+  document.querySelectorAll(selector).forEach(el=>{el.setAttribute(attr,format?format(value):value);});
+}
+function setClosestLabel(selector,key){
+  const value=siteText(key);
+  if(!value)return;
+  const label=document.querySelector(selector)?.closest('.fg')?.querySelector('label');
+  if(label)label.textContent=value;
+}
+function setIndexedText(selector,index,key){
+  const value=siteText(key);
+  if(!value)return;
+  const el=document.querySelectorAll(selector)[index];
+  if(el)el.textContent=value;
+}
+function applySiteContent(){
+  if(!window._siteContent)return;
+  const metaDesc=siteText('metaDescription');
+  if(siteText('pageTitle'))document.title=siteText('pageTitle');
+  if(metaDesc){
+    document.querySelector('meta[name="description"]')?.setAttribute('content',metaDesc);
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content',metaDesc);
+  }
+  setText('.nav-links a[href="#vitrin"]','navVitrin');
+  setText('.nav-links a[href="#hizmetler"]','navHizmetler');
+  setText('.nav-links a[href="#paketler"]','navPaketler');
+  setText('.nav-links a[href="#surec"]','navSurec');
+  setText('.nav-links a[href="#hakkimizda"]','navHakkimizda');
+  setText('.nav-links a[href="#iletisim"]','navIletisim');
+  setText('.nav-cta','navCta');
+  const introPlay=document.querySelector('#iPlay .i-play-lbl');
+  if(introPlay&&(siteText('introPlay')||siteText('introPlayAccent'))){
+    introPlay.innerHTML=`${esc(siteText('introPlay','Tanıtımı İzle'))} &nbsp;<span>${esc(siteText('introPlayAccent','✦ Sesli'))}</span>`;
+  }
+  setText('#iEye','introEyebrow');
+  setText('.h-eyebrow span','heroEyebrow');
+  setText('.hero h1','heroTitle');
+  setText('.hero-sub','heroSubtitle');
+  setText('.btn-rose','heroPrimary');
+  setText('.btn-ghost-r','heroSecondary');
+  setText('.stats-inner .stat-item:nth-child(1) .stat-lbl','stat1Label');
+  setText('.stats-inner .stat-item:nth-child(2) .stat-lbl','stat2Label');
+  setText('.stats-inner .stat-item:nth-child(3) .stat-lbl','stat3Label');
+  setText('.stats-inner .stat-item:nth-child(4) .stat-lbl','stat4Label');
+  setAttr('.stats-inner .stat-item:nth-child(1) .stat-num','data-t','stat1Number');
+  setAttr('.stats-inner .stat-item:nth-child(2) .stat-num','data-t','stat2Number');
+  setAttr('.stats-inner .stat-item:nth-child(3) .stat-num','data-t','stat3Number');
+  setAttr('.stats-inner .stat-item:nth-child(4) .stat-num','data-t','stat4Number');
+  setText('#vitrin .s-tag','vitrinTag');setText('#vitrin .s-title','vitrinTitle');setText('#vitrin .s-sub','vitrinSubtitle');
+  setText('#hizmetler .s-tag','servicesTag');setText('#hizmetler .s-title','servicesTitle');setText('#hizmetler .s-sub','servicesSubtitle');
+  setText('#paketler .s-tag','packagesTag');setText('#paketler .s-title','packagesTitle');setText('#paketler .s-sub','packagesSubtitle');
+  setText('#sss > div:first-child .s-tag','faqTag');setText('#sss > div:first-child .s-title','faqTitle');
+  setText('#sss .svc-grid .svc-card:nth-child(1) .svc-ttl','faq1Title');setText('#sss .svc-grid .svc-card:nth-child(1) .svc-txt','faq1Text');
+  setText('#sss .svc-grid .svc-card:nth-child(2) .svc-ttl','faq2Title');setText('#sss .svc-grid .svc-card:nth-child(2) .svc-txt','faq2Text');
+  setText('#sss .svc-grid .svc-card:nth-child(3) .svc-ttl','faq3Title');setText('#sss .svc-grid .svc-card:nth-child(3) .svc-txt','faq3Text');
+  setText('.review-showcase .s-title','reviewsTitle');setText('.review-showcase .s-sub','reviewsSubtitle');setText('.review-cta','reviewsCta');setAttr('.review-cta','href','mapUrl');
+  setText('#surec .s-tag','processTag');setText('#surec .s-title','processTitle');setText('#surec .s-sub','processSubtitle');
+  for(let i=1;i<=4;i++){setText(`#surec .proc-step:nth-child(${i}) .proc-ttl`,`process${i}Title`);setText(`#surec .proc-step:nth-child(${i}) .proc-txt`,`process${i}Text`);}
+  setText('#hakkimizda .s-tag','aboutTag');setText('#hakkimizda .s-title','aboutTitle');
+  setText('#hakkimizda .abt-p:nth-of-type(1)','aboutP1');setText('#hakkimizda .abt-p:nth-of-type(2)','aboutP2');setText('#hakkimizda .abt-sig','aboutSignature');
+  setText('#iletisim .s-tag','contactTag');setText('#iletisim .s-title','contactTitle');setText('#iletisim .s-sub','contactSubtitle');
+  setText('#iletisim .c-row:nth-child(1) .c-lbl','phoneLabel');setText('#iletisim .c-row:nth-child(1) .c-val','phoneDisplay');
+  setText('#iletisim .c-row:nth-child(2) .c-lbl','whatsappLabel');setText('#iletisim .c-row:nth-child(2) .c-val','whatsappDisplay');
+  setText('#iletisim .c-row:nth-child(3) .c-lbl','instagramLabel');setText('#iletisim .c-row:nth-child(3) .c-val','instagramDisplay');
+  setText('#iletisim .c-row:nth-child(4) .c-lbl','mapLabel');setText('#iletisim .c-row:nth-child(4) .c-val','mapDisplay');
+  setText('#iletisim .c-row:nth-child(5) .c-lbl','hoursLabel');setText('#iletisim .c-row:nth-child(5) .c-val','hoursDisplay');
+  setText('.map-title','mapTitle');setText('.map-card .c-lbl','mapSubtitle');setText('.map-link','mapButton');
+  setAttr('a[href^="tel:"]','href','phoneHref',v=>'tel:'+v.replace(/\D/g,''));
+  setAttr('a[href*="wa.me"]','href','whatsappUrl');
+  setAttr('a[href*="instagram.com"]','href','instagramUrl');
+  setAttr('a[href*="maps.app.goo.gl"], .map-link','href','mapUrl');
+  setClosestLabel('#iletisim input[type=text]','formNameLabel');
+  setAttr('#iletisim input[type=text]','placeholder','formNamePlaceholder');
+  setClosestLabel('#iletisim input[type=tel]','formPhoneLabel');
+  setAttr('#iletisim input[type=tel]','placeholder','formPhonePlaceholder');
+  setClosestLabel('#iletisim select:not(#fBudget):not(#fSource)','formTypeLabel');
+  setClosestLabel('#iletisim input[type=date]','formDateLabel');
+  setClosestLabel('#fBudget','formBudgetLabel');
+  setClosestLabel('#fSource','formSourceLabel');
+  setClosestLabel('#iletisim textarea','formMessageLabel');
+  setAttr('#iletisim textarea','placeholder','formMessagePlaceholder');
+  setText('.f-btn','formButton');setText('#fOk','formSuccess');
+  setText('.ft-desc','footerDesc');setIndexedText('.ft-col .ft-col-lbl',0,'footerServicesTitle');setIndexedText('.ft-col .ft-col-lbl',1,'footerContactTitle');
+  for(let i=1;i<=4;i++)setIndexedText('.ft-col a',i-1,`footerService${i}`);
+  setText('.ft-copy','footerCopy');
+  if(typeof renderFiveStarReviews==='function')renderFiveStarReviews();
+}
+window.applySiteContent=applySiteContent;
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 if(isStandalone) document.documentElement.classList.add('is-standalone');
 const preloadedBandImages=new Set();
@@ -1376,7 +1484,14 @@ function reviewCard(r){
   </div>`;
 }
 function renderFiveStarReviews(){
-  const fiveStars = REVIEWS.filter(r=>Number(r.rating)===5);
+  const content=window._siteContent||{};
+  const getReview=(r,i)=>({
+    ...r,
+    name:siteText(`review${i+1}Name`,r.name),
+    meta:siteText(`review${i+1}Meta`,r.meta),
+    text:siteText(`review${i+1}Text`,r.text)
+  });
+  const fiveStars = REVIEWS.map(getReview).filter(r=>Number(r.rating)===5);
   const row1 = fiveStars.filter((_,i)=>i%2===0);
   const row2 = fiveStars.filter((_,i)=>i%2===1);
   const repeat = arr => [...arr,...arr,...arr];
@@ -1384,6 +1499,7 @@ function renderFiveStarReviews(){
   document.getElementById('reviewBand2').innerHTML = repeat(row2.length?row2:row1).map(reviewCard).join('');
 }
 renderFiveStarReviews();
+applySiteContent();
 
 // ══ NAV ══
 window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('solid',scrollY>80));
