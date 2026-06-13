@@ -4,3 +4,4 @@ functions/package-lock.json
 .env
 .env.*
 .vercel
+.env*
