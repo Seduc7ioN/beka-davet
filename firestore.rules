@@ -80,8 +80,16 @@ service cloud.firestore {
     }
 
     match /settings/{id} {
-      allow read: if id == 'activeMusic';
+      allow read: if id == 'activeMusic' || isAdmin();
       allow write: if isAdmin();
+    }
+
+    match /pushTokens/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /pushState/{id} {
+      allow read, write: if isAdmin();
     }
 
     match /teklifler/{id} {

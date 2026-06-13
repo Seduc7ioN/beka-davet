@@ -19,6 +19,8 @@ import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, query, orderBy, serverTimestamp, limit }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getMessaging, getToken, onMessage, isSupported as isMessagingSupported }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js';
 
 const FC = {
   apiKey:"AIzaSyAVgSsLV4Td-6gFmNLmu_TLbJomESBDeX8",
@@ -32,7 +34,7 @@ try {
   const app = initializeApp(FC);
   const db = getFirestore(app);
   const auth = getAuth(app);
-  window._fb = { db, auth, firebaseReady:true, authReady:true, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, query, orderBy, serverTimestamp, limit, signInWithEmailAndPassword, signOut };
+  window._fb = { app, db, auth, firebaseReady:true, authReady:true, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc, query, orderBy, serverTimestamp, limit, signInWithEmailAndPassword, signOut, getMessaging, getToken, onMessage, isMessagingSupported };
   onAuthStateChanged(auth, user => {
     window._authUser = user;
     window.dispatchEvent(new Event('authready'));
@@ -720,6 +722,16 @@ body{
         </div>
         <button class="btn btn-outline" onclick="exportData('ajanda')" style="margin-top:8px">Ajanda CSV</button>
       </div>
+      <div class="card">
+        <div class="card-title">Arka Plan Bildirimleri</div>
+        <div style="font-size:.75rem;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          PWA kapalıyken bildirim alabilmek için Firebase Cloud Messaging VAPID anahtarı gerekir. Anahtarı Firebase Console &gt; Project settings &gt; Cloud Messaging bölümünden oluşturup buraya yapıştırın.
+        </div>
+        <div class="fg"><label>FCM VAPID Anahtarı</label><input type="text" id="pushVapidKey" placeholder="BExxx..."/></div>
+        <button class="btn btn-gold" onclick="savePushSettings()">Bildirim Ayarını Kaydet</button>
+        <button class="btn btn-outline" onclick="enableAdminNotifications()" style="margin-top:8px">Bu Cihazda Bildirimleri Aç</button>
+        <div id="pushStatus" style="font-size:.68rem;color:var(--muted);line-height:1.6;margin-top:10px">Bildirim durumu kontrol ediliyor...</div>
+      </div>
       <!-- Hesap -->
       <div class="card">
         <div class="card-title">Hesap Güvenliği</div>
@@ -882,7 +894,7 @@ function goTab(name,el){
   if(name==='musteriler')renderCRM();
   if(name==='vitrin'){renderMedia();renderIntroSlides();renderGallery();renderMuz();}
   if(name==='ajanda')initAjanda();
-  if(name==='ayarlar'){renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();}
+  if(name==='ayarlar'){renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();loadPushSettings();}
   if(name==='home')renderDashboard();
 }
 
@@ -974,6 +986,89 @@ function buildReminderItems(ajanda=[],teklifler=[]){
   });
   return items.sort((a,b)=>a.sort-b.sort).slice(0,12);
 }
+function pushStatus(msg,isError=false){
+  const el=document.getElementById('pushStatus');
+  if(el){el.textContent=msg;el.style.color=isError?'#e07060':'var(--muted)';}
+}
+async function getPushSettings(){
+  const fb=FB();
+  if(fb.firebaseReady){
+    try{
+      const s=await fb.getDoc(fb.doc(fb.db,'settings','push'));
+      return s.exists()?s.data():{};
+    }catch(e){}
+  }
+  return LS.get('bk_push_settings',{});
+}
+async function loadPushSettings(){
+  const s=await getPushSettings();
+  const input=document.getElementById('pushVapidKey');
+  if(input)input.value=s.vapidKey||'';
+  const token=LS.get('bk_fcm_token','');
+  if(token)pushStatus('Bu cihaz bildirimlere kayıtlı.');
+  else pushStatus(s.vapidKey?'VAPID anahtarı kayıtlı. Bu cihazda bildirimleri açabilirsiniz.':'VAPID anahtarı bekleniyor.');
+}
+async function savePushSettings(){
+  const key=document.getElementById('pushVapidKey')?.value.trim();
+  if(!key){toast('VAPID anahtarı gerekli');pushStatus('VAPID anahtarı girilmedi.',true);return;}
+  const fb=FB();
+  if(fb.firebaseReady){
+    try{await fb.setDoc(fb.doc(fb.db,'settings','push'),{vapidKey:key,enabled:true,updatedAt:fb.serverTimestamp()},{merge:true});}
+    catch(e){toast('Ayar kaydedilemedi');pushStatus('Firebase ayarı kaydedilemedi.',true);return;}
+  }else{
+    LS.set('bk_push_settings',{vapidKey:key,enabled:true});
+  }
+  toast('Bildirim ayarı kaydedildi');
+  pushStatus('VAPID anahtarı kayıtlı. Bu cihazda bildirimleri açabilirsiniz.');
+}
+function pushTokenDocId(token){
+  return 'token_'+String(token||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(-120);
+}
+async function registerPushDevice(){
+  if(!('serviceWorker' in navigator)||!('Notification' in window)){toast('Bu cihaz push bildirimi desteklemiyor');pushStatus('Bu cihaz push bildirimi desteklemiyor.',true);return;}
+  if(location.protocol!=='https:'&&location.hostname!=='localhost'&&!location.hostname.startsWith('127.')){toast('Bildirimler HTTPS sitede açılabilir');pushStatus('Bildirimler HTTPS sitede açılabilir.',true);return;}
+  const fb=FB();
+  if(!fb.firebaseReady||!fb.getMessaging||!fb.getToken){toast('Firebase Messaging hazır değil');pushStatus('Firebase Messaging hazır değil.',true);return;}
+  if(!(await ensureAdminAuth()))return;
+  const supported=await fb.isMessagingSupported().catch(()=>false);
+  if(!supported){toast('Bu tarayıcı FCM desteklemiyor');pushStatus('Bu tarayıcı FCM desteklemiyor.',true);return;}
+  const settings=await getPushSettings();
+  if(!settings.vapidKey){toast('Önce VAPID anahtarını kaydedin');pushStatus('Önce VAPID anahtarını kaydedin.',true);return;}
+  const permission=await Notification.requestPermission();
+  if(permission!=='granted'){toast('Bildirim izni verilmedi');pushStatus('Bildirim izni verilmedi.',true);return;}
+  try{
+    const registration=await navigator.serviceWorker.register('sw.js');
+    const messaging=fb.getMessaging(fb.app);
+    const token=await fb.getToken(messaging,{vapidKey:settings.vapidKey,serviceWorkerRegistration:registration});
+    if(!token){toast('Bildirim tokeni alınamadı');pushStatus('Bildirim tokeni alınamadı.',true);return;}
+    const uid=window._authUser?.uid||fb.auth?.currentUser?.uid||'admin';
+    await fb.setDoc(fb.doc(fb.db,'pushTokens',pushTokenDocId(token)),{
+      token,uid,active:true,
+      userAgent:navigator.userAgent,
+      platform:navigator.platform||'web',
+      updatedAt:fb.serverTimestamp()
+    },{merge:true});
+    LS.set('bk_fcm_token',token);
+    setupForegroundMessaging(messaging);
+    toast('Arka plan bildirimleri açıldı');
+    pushStatus('Bu cihaz arka plan bildirimlerine kayıtlı.');
+  }catch(e){
+    console.warn('Push kayıt hatası:',e);
+    toast('Bildirim kaydı tamamlanamadı');
+    pushStatus('Bildirim kaydı tamamlanamadı: '+(e.message||e.code||'Bilinmeyen hata'),true);
+  }
+}
+function setupForegroundMessaging(messaging){
+  if(window._pushForegroundReady||!messaging)return;
+  const fb=FB();
+  try{
+    fb.onMessage(messaging,payload=>{
+      const n=payload.notification||{};
+      toast((n.title||'Hatırlatma')+': '+(n.body||'Yeni bildirim var'),5000);
+    });
+    window._pushForegroundReady=true;
+  }catch(e){}
+}
 function renderReminderCenter(items){
   const count=items.length;
   const n=document.getElementById('dReminder'),list=document.getElementById('dReminderList'),btn=document.getElementById('btnNotify');
@@ -990,12 +1085,7 @@ function renderReminderCenter(items){
   if(btn)btn.style.display=('Notification' in window&&Notification.permission==='default')?'inline-flex':'none';
   maybeNotifyReminders(items);
 }
-async function enableAdminNotifications(){
-  if(!('Notification' in window)){toast('Bu cihaz bildirimleri desteklemiyor');return;}
-  const p=await Notification.requestPermission();
-  toast(p==='granted'?'Bildirimler acildi':'Bildirim izni verilmedi');
-  renderDashboard();
-}
+async function enableAdminNotifications(){await registerPushDevice();renderDashboard();}
 function maybeNotifyReminders(items){
   if(!items.length||!('Notification' in window)||Notification.permission!=='granted')return;
   const key='bk_reminder_ping_'+localDateKey(),ids=items.slice(0,3).map(i=>i.type+'|'+i.title+'|'+i.meta).join('~');
@@ -1835,7 +1925,7 @@ function printContract(){if(!document.getElementById('contractDoc').innerHTML)re
 
 async function initApp(){
   updateFBStatus();
-  await Promise.all([renderDashboard(),renderCRM(),renderMedia(),renderIntroSlides(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderServices(),renderReports(),updateBadges()]);
+  await Promise.all([renderDashboard(),renderCRM(),renderMedia(),renderIntroSlides(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderServices(),renderReports(),updateBadges(),loadPushSettings()]);
 }
 window._appReady=()=>{updateFBStatus();if(document.getElementById('app').classList.contains('visible'))initApp();};
 window.addEventListener('authready',()=>{if(window._authUser&&!document.getElementById('app').classList.contains('visible'))showApp();});
