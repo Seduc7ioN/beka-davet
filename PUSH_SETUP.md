@@ -1,6 +1,6 @@
 # Arka Plan Bildirimleri Kurulumu
 
-Bu proje PWA kapalıyken bildirim göndermek için Firebase Cloud Messaging ve Firebase Cloud Functions kullanır.
+Bu proje PWA kapalıyken bildirim göndermek için Firebase Cloud Messaging ve Vercel API/Cron kullanır. Firebase Functions kullanılmadığı için Blaze plan gerekli değildir.
 
 ## 1. VAPID anahtarı oluştur
 
@@ -17,19 +17,44 @@ Canlı sitede `admin.html` paneline giriş yapın.
 
 Bu işlem cihazın FCM token bilgisini Firestore `pushTokens` koleksiyonuna kaydeder.
 
-## 3. Firebase Functions deploy et
+## 3. Vercel ortam değişkenlerini ekle
 
-Firebase CLI kurulu ve giriş yapılmış bir terminalde:
+Firebase servis hesabı JSON dosyası oluşturun:
+
+1. Firebase Console > Project settings > Service accounts bölümüne gidin.
+2. Generate new private key butonuna basın.
+3. İndirilen JSON dosyasını base64 metne çevirin:
 
 ```sh
-npm --prefix functions install
-firebase deploy --only firestore:rules,functions
+base64 -i ~/Downloads/service-account.json | tr -d '\n' | pbcopy
 ```
 
-Fonksiyon `Europe/Istanbul` saat diliminde her 30 dakikada bir çalışır. Yaklaşan ajanda notlarını ve yeni/yaklaşan teklifleri okuyup kayıtlı cihazlara FCM bildirimi gönderir.
+Vercel projesine şu environment variable değerlerini ekleyin:
+
+```txt
+FIREBASE_PROJECT_ID=bekadavet-bfe6f
+FIREBASE_SERVICE_ACCOUNT_BASE64=<pbcopy ile kopyalanan uzun metin>
+CRON_SECRET=<uzun rastgele gizli anahtar>
+```
+
+Manuel test için:
+
+```sh
+curl "https://beka-davet.vercel.app/api/send-reminders?secret=<CRON_SECRET>"
+```
+
+## 4. Firestore kurallarını deploy et
+
+Firebase tarafında sadece Firestore rules deploy edilir:
+
+```sh
+npx -y firebase-tools deploy --only firestore:rules --project bekadavet-bfe6f
+```
+
+Vercel cron Hobby planda günde 1 kez, Türkiye saatiyle yaklaşık 09:00-09:59 arasında çalışır. Aktif ajanda ve teklif hatırlatmalarını kayıtlı admin cihazlarına tek bildirim olarak gönderir.
 
 ## Notlar
 
 - PWA kapalıyken bildirim için tarayıcı bildirim izni verilmiş olmalıdır.
 - iPhone/iPad tarafında web push desteği ana ekrana eklenmiş PWA üzerinden çalışır.
-- Firebase Functions için proje tarafında Cloud Functions, Cloud Scheduler ve Cloud Messaging servislerinin etkin olması gerekir.
+- Daha sık hatırlatma için Vercel Pro veya harici zamanlayıcı gerekir.
