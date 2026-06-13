@@ -54,7 +54,7 @@
   "sameAs": [
     "https://www.instagram.com/beka_davet"
   ],
-  "hasMap": "https://maps.app.goo.gl/piy9QXXTtX4poUou5",
+  "hasMap": "https://maps.app.goo.gl/1fnvAXTFndb7xaXh9",
   "makesOffer": [
     {
       "@type": "Offer",
@@ -422,6 +422,39 @@ nav.solid{background:rgba(8,6,4,.97);backdrop-filter:blur(24px);padding:12px 24p
 .band-item:hover::before,.band-item:hover::after{opacity:1}
 
 /* ══════════════════════════════
+   YORUMLAR
+══════════════════════════════ */
+#sss{padding:120px 56px;background:var(--black);overflow:hidden}
+.review-showcase{margin-top:72px}
+.review-wrap{position:relative;margin-top:18px}
+.review-band{display:flex;gap:14px;width:max-content;animation:bandScroll 48s linear infinite;padding:4px 0}
+.review-band.rev{animation-direction:reverse;animation-duration:58s}
+.review-band:hover{animation-play-state:paused}
+.review-card{
+  width:340px;min-height:190px;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(38,28,25,.95),rgba(20,15,13,.96));
+  border:1px solid rgba(200,132,122,.16);
+  padding:28px 26px;position:relative;overflow:hidden;
+  box-shadow:0 18px 60px rgba(0,0,0,.18);
+}
+.review-card::before{
+  content:'“';position:absolute;top:-12px;right:22px;
+  font-family:'Cormorant Garamond',serif;font-size:7rem;
+  color:rgba(196,162,101,.08);line-height:1;
+}
+.review-stars{font-size:.78rem;letter-spacing:.16em;color:var(--gold2);margin-bottom:16px}
+.review-text{font-size:.82rem;line-height:1.9;color:rgba(255,255,255,.76);font-weight:300}
+.review-name{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:#fff;margin-top:18px;font-style:italic}
+.review-meta{font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(224,168,158,.72);margin-top:4px}
+.review-cta{
+  display:inline-flex;align-items:center;gap:10px;margin-top:28px;
+  color:var(--gold2);text-decoration:none;font-size:.62rem;letter-spacing:.2em;
+  text-transform:uppercase;border:1px solid rgba(196,162,101,.24);
+  padding:12px 18px;transition:all .3s;
+}
+.review-cta:hover{border-color:var(--gold);background:rgba(196,162,101,.08)}
+
+/* ══════════════════════════════
    HİZMETLER
 ══════════════════════════════ */
 #hizmetler{padding:120px 56px;background:var(--black)}
@@ -490,6 +523,16 @@ nav.solid{background:rgba(8,6,4,.97);backdrop-filter:blur(24px);padding:12px 24p
 }
 .c-lbl{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--rose2);margin-bottom:5px;font-weight:600}
 .c-val{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:#ffffff;font-weight:500}
+.map-card{
+  margin-top:24px;border:1px solid rgba(200,132,122,.18);
+  background:linear-gradient(135deg,rgba(38,28,25,.82),rgba(20,15,13,.95));
+  overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.16);
+}
+.map-frame{display:block;width:100%;height:260px;border:0;filter:saturate(.75) brightness(.86)}
+.map-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-top:1px solid rgba(200,132,122,.12)}
+.map-title{font-family:'Cormorant Garamond',serif;font-size:1.15rem;color:#fff}
+.map-link{color:var(--gold2);font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;border:1px solid rgba(196,162,101,.24);padding:9px 12px;white-space:nowrap;transition:all .3s}
+.map-link:hover{border-color:var(--gold);background:rgba(196,162,101,.08)}
 /* form */
 .fg{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .fg label{font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(200,132,122,.9);font-weight:600}
@@ -568,8 +611,12 @@ footer{background:var(--black);border-top:1px solid rgba(200,132,122,.1);padding
   .nav-links{display:none}
   .nav-cta{padding:9px 16px !important;font-size:.6rem !important;min-height:40px}
   .hero-content{padding:0 22px 88px}
-  #hizmetler,#surec,#iletisim{padding:88px 22px}
+  #hizmetler,#surec,#iletisim,#sss{padding:88px 22px}
   #vitrin .vt-header{padding:0 22px}
+  .review-card{width:285px;min-height:210px;padding:24px 22px}
+  .review-band{animation-duration:54s}
+  .map-frame{height:220px}
+  .map-actions{align-items:flex-start;flex-direction:column}
   .svc-grid{grid-template-columns:1fr}
   .proc-row{grid-template-columns:1fr 1fr;gap:36px}
   .proc-row::before{display:none}
@@ -798,6 +845,22 @@ try {
     <div class="svc-card"><span class="svc-n">02</span><span class="svc-icon">?</span><div class="svc-line"></div><h3 class="svc-ttl">Paketler değiştirilebilir mi?</h3><p class="svc-txt">Evet. Davetli sayısı, mekan, tema ve bütçeye göre tüm içerikleri birlikte şekillendiriyoruz.</p></div>
     <div class="svc-card"><span class="svc-n">03</span><span class="svc-icon">♥</span><div class="svc-line"></div><h3 class="svc-ttl">Müşterilerimiz Ne Diyor?</h3><p class="svc-txt">“Her detayla ilgilendiler, bize sadece günün keyfini çıkarmak kaldı. İyi ki Beka Davet.”</p></div>
   </div>
+  <div class="review-showcase reveal">
+    <div style="text-align:center;margin-bottom:28px">
+      <div class="s-tag">5 Yıldızlı Yorumlar</div>
+      <h2 class="s-title">Mutlu <em>Misafirlerimiz</em></h2>
+      <p class="s-sub">Yalnızca 5 yıldızlı memnuniyet yorumları bu alanda otomatik olarak döner.</p>
+      <a class="review-cta" href="https://maps.app.goo.gl/1fnvAXTFndb7xaXh9" target="_blank" rel="noopener noreferrer">Google'da Gör</a>
+    </div>
+    <div class="review-wrap">
+      <div class="band-fade-l"></div><div class="band-fade-r"></div>
+      <div class="review-band" id="reviewBand1"></div>
+    </div>
+    <div class="review-wrap">
+      <div class="band-fade-l"></div><div class="band-fade-r"></div>
+      <div class="review-band rev" id="reviewBand2"></div>
+    </div>
+  </div>
 </section>
 
 <!-- ══ SÜREÇ ══ -->
@@ -846,11 +909,21 @@ try {
       <a href="https://www.instagram.com/beka_davet" target="_blank" rel="noopener noreferrer" class="c-row">
         <div class="c-ico">📸</div><div><div class="c-lbl">Instagram</div><div class="c-val">@beka_davet</div></div>
       </a>
-      <a href="https://maps.app.goo.gl/piy9QXXTtX4poUou5" target="_blank" rel="noopener noreferrer" class="c-row">
+      <a href="https://maps.app.goo.gl/1fnvAXTFndb7xaXh9" target="_blank" rel="noopener noreferrer" class="c-row">
         <div class="c-ico">📍</div><div><div class="c-lbl">Konum</div><div class="c-val">Haritada Görüntüle →</div></div>
       </a>
       <div class="c-row">
         <div class="c-ico">🕐</div><div><div class="c-lbl">Çalışma Saatleri</div><div class="c-val" style="font-size:.95rem">Her Gün 09:00 – 20:00</div></div>
+      </div>
+      <div class="map-card">
+        <iframe class="map-frame" title="Beka Davet konumu" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=40.2110786,29.1057466&z=16&output=embed"></iframe>
+        <div class="map-actions">
+          <div>
+            <div class="map-title">Beka Davet Konumu</div>
+            <div class="c-lbl" style="margin-top:4px">Yol tarifi için haritada açın</div>
+          </div>
+          <a class="map-link" href="https://maps.app.goo.gl/1fnvAXTFndb7xaXh9" target="_blank" rel="noopener noreferrer">Yol Tarifi Al</a>
+        </div>
       </div>
     </div>
     <div>
@@ -895,7 +968,7 @@ try {
       <a href="tel:05350330645">📞 0535 033 06 45</a>
       <a href="https://wa.me/905350330645" target="_blank" rel="noopener noreferrer">💬 WhatsApp</a>
       <a href="https://www.instagram.com/beka_davet" target="_blank" rel="noopener noreferrer">📸 @beka_davet</a>
-      <a href="https://maps.app.goo.gl/piy9QXXTtX4poUou5" target="_blank" rel="noopener noreferrer">📍 Konumumuz</a>
+      <a href="https://maps.app.goo.gl/1fnvAXTFndb7xaXh9" target="_blank" rel="noopener noreferrer">📍 Konumumuz</a>
     </div>
   </div>
   <div class="ft-bot">
@@ -1228,6 +1301,40 @@ function renderBand(id,items){
     </div>`;
   }).join('');
 }
+
+// ══ 5 YILDIZLI YORUMLAR ══
+const REVIEWS = [
+  {rating:5,name:'Elif & Mert',meta:'Nişan Organizasyonu',text:'Her şey tam konuştuğumuz gibi hazırdı. Renkler, masa düzeni ve ilgi gerçekten çok özenliydi.'},
+  {rating:5,name:'Seda Hanım',meta:'Kına Gecesi',text:'Kına gecemizde hiçbir detayı düşünmek zorunda kalmadık. Ekip çok sakin, hızlı ve çözüm odaklıydı.'},
+  {rating:5,name:'Ayşe Hanım',meta:'Doğum Günü',text:'Doğum günü konsepti fotoğraflarda bile harika durdu. Çocuğumuz ve misafirlerimiz çok mutlu ayrıldı.'},
+  {rating:5,name:'Burak Bey',meta:'Özel Etkinlik',text:'Son dakika değişikliklerinde bile bizi yormadan her şeyi toparladılar. Gönül rahatlığıyla öneririm.'},
+  {rating:5,name:'Zeynep Hanım',meta:'Söz Organizasyonu',text:'Dekorasyon zarif, iletişim çok iyiydi. Organizasyon boyunca yanımızda olduklarını hissettirdiler.'},
+  {rating:5,name:'Derya & Emre',meta:'Davet Organizasyonu',text:'Mekan girişinden sahne alanına kadar her köşe çok şıktı. Misafirlerimiz hâlâ konuşuyor.'},
+  {rating:5,name:'Melis Hanım',meta:'Konsept Tasarım',text:'Bütçemize göre en doğru çözümü sundular. Hem şık hem de içimize sinen bir organizasyon oldu.'},
+  {rating:5,name:'Kübra Hanım',meta:'Nişan Masası',text:'Fotoğraf alanı ve masa detayları tam istediğimiz gibiydi. Profesyonel ama samimi bir ekip.'},
+  {rating:5,name:'Can Bey',meta:'Kurumsal Etkinlik',text:'İlk görüşmeden kurulum bitene kadar iletişimleri çok netti. İçimiz rahat şekilde teslim ettik.'}
+];
+
+function reviewStars(rating){
+  return '★★★★★'.slice(0,Math.max(0,Math.min(5,Number(rating)||0)));
+}
+function reviewCard(r){
+  return `<div class="review-card">
+    <div class="review-stars">${reviewStars(r.rating)}</div>
+    <p class="review-text">${esc(r.text)}</p>
+    <div class="review-name">${esc(r.name)}</div>
+    <div class="review-meta">${esc(r.meta)}</div>
+  </div>`;
+}
+function renderFiveStarReviews(){
+  const fiveStars = REVIEWS.filter(r=>Number(r.rating)===5);
+  const row1 = fiveStars.filter((_,i)=>i%2===0);
+  const row2 = fiveStars.filter((_,i)=>i%2===1);
+  const repeat = arr => [...arr,...arr,...arr];
+  document.getElementById('reviewBand1').innerHTML = repeat(row1).map(reviewCard).join('');
+  document.getElementById('reviewBand2').innerHTML = repeat(row2.length?row2:row1).map(reviewCard).join('');
+}
+renderFiveStarReviews();
 
 // ══ NAV ══
 window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('solid',scrollY>80));
