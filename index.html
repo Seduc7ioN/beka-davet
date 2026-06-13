@@ -400,15 +400,16 @@ nav.solid{background:rgba(8,6,4,.97);backdrop-filter:blur(24px);padding:12px 24p
 .band-wrap{position:relative;margin-top:44px}
 .band-fade-l{position:absolute;left:0;top:0;bottom:0;width:140px;background:linear-gradient(to right,var(--dark),transparent);z-index:2;pointer-events:none}
 .band-fade-r{position:absolute;right:0;top:0;bottom:0;width:140px;background:linear-gradient(to left,var(--dark),transparent);z-index:2;pointer-events:none}
-.band{display:flex;gap:12px;padding:4px 0;animation:bandScroll 42s linear infinite;width:max-content}
+.band{display:flex;gap:12px;padding:4px 0;animation:bandScroll 42s linear infinite;width:max-content;will-change:transform;transform:translate3d(0,0,0);backface-visibility:hidden;contain:layout paint}
 .band:hover{animation-play-state:paused}
 .band.rev{animation-direction:reverse;animation-duration:52s}
-@keyframes bandScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes bandScroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
 .band-item{
   width:295px;height:205px;flex-shrink:0;position:relative;overflow:hidden;cursor:pointer;
   background:linear-gradient(135deg,#1e1310 0%,#2a1a14 50%,#160e0b 100%);
+  transform:translateZ(0);backface-visibility:hidden;
 }
-.band-item img{width:100%;height:100%;object-fit:cover;filter:saturate(.7) brightness(.85);transition:filter .65s,transform .75s;display:block}
+.band-item img{width:100%;height:100%;object-fit:cover;filter:saturate(.7) brightness(.85);transition:filter .65s,transform .75s,opacity .45s ease;display:block;transform:translateZ(0);backface-visibility:hidden}
 .band-item:hover img{filter:saturate(1.05) brightness(1.05);transform:scale(1.07)}
 .band-glass{position:absolute;inset:0;background:linear-gradient(to top,rgba(12,9,8,.88) 0%,transparent 55%);opacity:0;transition:opacity .4s}
 .band-item:hover .band-glass{opacity:1}
@@ -613,6 +614,12 @@ footer{background:var(--black);border-top:1px solid rgba(200,132,122,.1);padding
   .hero-content{padding:0 22px 88px}
   #hizmetler,#surec,#iletisim,#sss{padding:88px 22px}
   #vitrin .vt-header{padding:0 22px}
+  .band-wrap{margin-top:28px}
+  .band-fade-l,.band-fade-r{width:54px}
+  .band{gap:10px;animation-duration:58s}
+  .band.rev{animation-duration:70s}
+  .band-item{width:235px;height:164px}
+  .band-item img{filter:none;transition:opacity .35s ease,transform .55s ease}
   .review-card{width:285px;min-height:210px;padding:24px 22px}
   .review-band{animation-duration:54s}
   .map-frame{height:220px}
@@ -641,6 +648,16 @@ footer{background:var(--black);border-top:1px solid rgba(200,132,122,.1);padding
   .i-label{display:none}
   .intro-img{background-position:center center}
 }
+@media (display-mode:standalone){
+  .band{animation-duration:64s}
+  .band.rev{animation-duration:78s}
+  .band-item img{filter:none}
+  .band-item:hover img{transform:translateZ(0)}
+}
+html.is-standalone .band{animation-duration:64s}
+html.is-standalone .band.rev{animation-duration:78s}
+html.is-standalone .band-item img{filter:none}
+html.is-standalone .band-item:hover img{transform:translateZ(0)}
 </style>
 
 <!-- Firebase SDK — vitrin + form -->
@@ -1027,6 +1044,19 @@ const SERVICE_DEFAULT = [
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const escAttr=v=>esc(v).replace(/`/g,'&#96;');
 const safeUrl=v=>{const s=String(v??'').trim();return /^(https:|blob:|data:image\/)/i.test(s)?s:'';};
+const isStandalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+if(isStandalone) document.documentElement.classList.add('is-standalone');
+const preloadedBandImages=new Set();
+
+function preloadBandImages(items){
+  items.map(it=>safeUrl(it.url)).filter(Boolean).slice(0,32).forEach(url=>{
+    if(preloadedBandImages.has(url)) return;
+    preloadedBandImages.add(url);
+    const img=new Image();
+    img.decoding='async';
+    img.src=url;
+  });
+}
 
 function getSavedGallery(){
   const legacy=window._fbGallery&&window._fbGallery.length?window._fbGallery:(()=>{try{return JSON.parse(localStorage.getItem('bk_gallery')||'[]');}catch(e){return[];}})();
@@ -1270,6 +1300,7 @@ function stopViz(){clearInterval(vizInt);document.querySelectorAll('.mb-vb').for
 function buildBands(){
   const all=getSavedGallery().map(g=>({url:g.url,cat:g.cat,title:g.title}));
   if(!all.length){renderBand('band1',[]);renderBand('band2',[]);return;}
+  preloadBandImages(all);
   const h=Math.ceil(all.length/2);
   renderBand('band1',[...all.slice(0,h),...all.slice(0,h)]);
   const row2=all.slice(h);
@@ -1289,12 +1320,13 @@ const BAND_GRADIENTS = [
 function renderBand(id,items){
   document.getElementById(id).innerHTML=items.map((it,i)=>{
     const grad = BAND_GRADIENTS[i % BAND_GRADIENTS.length];
-    const url = escAttr(safeUrl(it.url));
-    return `<div class="band-item" style="background:${grad}">
-      <img src="${url}" alt="${escAttr(it.title)}" loading="lazy"
-        style="opacity:0;transition:opacity .8s ease"
+    const url = safeUrl(it.url);
+    const img = url ? `<img src="${escAttr(url)}" alt="${escAttr(it.title)}" loading="eager" decoding="async" fetchpriority="${i<8?'high':'low'}" draggable="false"
+        style="opacity:0"
         onload="this.style.opacity='1'"
-        onerror="this.style.display='none'"/>
+        onerror="this.style.display='none'"/>` : '';
+    return `<div class="band-item" style="background:${grad}">
+      ${img}
       <div class="band-glass"></div>
       <div class="band-info"><span class="band-cat">${esc(it.cat)}</span><div class="band-title">${esc(it.title)}</div></div>
     </div>`;
