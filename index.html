@@ -428,7 +428,11 @@ nav.solid{background:rgba(8,6,4,.97);backdrop-filter:blur(24px);padding:12px 24p
 #sss{padding:120px 56px;background:var(--black);overflow:hidden}
 .review-showcase{margin-top:72px}
 .review-wrap{position:relative;margin-top:18px}
-.review-band{display:flex;gap:14px;width:max-content;animation:bandScroll 48s linear infinite;padding:4px 0}
+.review-band{
+  --band-target:-50%;
+  display:flex;gap:14px;width:max-content;animation:bandScroll 48s linear infinite;padding:4px 0;
+  will-change:transform;transform:translate3d(0,0,0);backface-visibility:hidden;contain:layout style;
+}
 .review-band.rev{animation-direction:reverse;animation-duration:58s}
 .review-band:hover{animation-play-state:paused}
 .review-card{
@@ -1494,9 +1498,14 @@ function renderFiveStarReviews(){
   const fiveStars = REVIEWS.map(getReview).filter(r=>Number(r.rating)===5);
   const row1 = fiveStars.filter((_,i)=>i%2===0);
   const row2 = fiveStars.filter((_,i)=>i%2===1);
-  const repeat = arr => [...arr,...arr,...arr];
-  document.getElementById('reviewBand1').innerHTML = repeat(row1).map(reviewCard).join('');
-  document.getElementById('reviewBand2').innerHTML = repeat(row2.length?row2:row1).map(reviewCard).join('');
+  const row2Source = row2.length?row2:row1;
+  const repeat = arr => [...arr,...arr,...arr,...arr];
+  const band1=document.getElementById('reviewBand1');
+  const band2=document.getElementById('reviewBand2');
+  band1.innerHTML = repeat(row1).map(reviewCard).join('');
+  band2.innerHTML = repeat(row2Source).map(reviewCard).join('');
+  setupBandLoop(band1,row1.length);
+  setupBandLoop(band2,row2Source.length);
 }
 renderFiveStarReviews();
 applySiteContent();
