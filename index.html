@@ -1043,17 +1043,6 @@ const SLIDE_GRADIENTS = [
   'linear-gradient(160deg,#1a1420 0%,#100e18 40%,#281c2c 100%)',
 ];
 
-const PACKAGE_DEFAULT = [
-  {name:'Başlangıç',price:'Fiyat görüşülür',desc:'Küçük aile kutlamaları için konsept, temel dekor ve masa düzeni.'},
-  {name:'Premium',price:'İhtiyaca göre',desc:'Nişan, kına ve özel günler için detaylı konsept, dekor ve süreç planlama.'},
-  {name:'Özel Tasarım',price:'Teklif alın',desc:'Mekan, davetli sayısı ve tema tamamen size göre kurgulanır.'}
-];
-const SERVICE_DEFAULT = [
-  {name:'Nişan & Söz Töreni',icon:'💍',desc:'En özel "evet" anını rüya gibi bir atmosferde kutlayın.',features:['Konsept & Dekorasyon Tasarımı','Çiçek Aranjmanı','İkram & Pasta Koordinasyonu','Fotoğraf & Video Planlaması','Davetiye Tasarımı']},
-  {name:'Kına Gecesi',icon:'🪷',desc:'Geleneği modernlikle harmanlayarak unutulmaz bir gece yaratıyoruz.',features:['Geleneksel & Modern Dekor','Kına Tepsisi Koordinasyonu','Müzik & Eğlence Programı','Kına Mumu & Aksesuar','Misafir Ağırlama Planı']},
-  {name:'Doğum Günü & Etkinlik',icon:'🎂',desc:'Temasal partilerden kurumsal etkinliklere her organizasyon özeldir.',features:['Temasal Dekorasyon','Balon & Pano Tasarımı','Özel Pasta Koordinasyonu','Sürpriz Organizasyonu','Kurumsal Etkinlik Yönetimi']}
-];
-
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const escAttr=v=>esc(v).replace(/`/g,'&#96;');
 const safeUrl=v=>{const s=String(v??'').trim();return /^(https:|blob:|data:image\/)/i.test(s)?s:'';};
@@ -1061,6 +1050,34 @@ const siteText=(key,fallback='')=>{
   const v=window._siteContent&&window._siteContent[key];
   return typeof v==='string'&&v.trim()?v.trim():fallback;
 };
+const siteLines=(key,fallback=[])=>siteText(key,fallback.join('\n')).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+function getDefaultPackages(){
+  const names=['Başlangıç','Premium','Özel Tasarım'];
+  const prices=['Fiyat görüşülür','İhtiyaca göre','Teklif alın'];
+  const descriptions=[
+    'Küçük aile kutlamaları için konsept, temel dekor ve masa düzeni.',
+    'Nişan, kına ve özel günler için detaylı konsept, dekor ve süreç planlama.',
+    'Mekan, davetli sayısı ve tema tamamen size göre kurgulanır.'
+  ];
+  return [1,2,3].map((n,i)=>({
+    name:siteText(`package${n}Name`,names[i]),
+    price:siteText(`package${n}Price`,prices[i]),
+    desc:siteText(`package${n}Desc`,descriptions[i])
+  }));
+}
+function getDefaultServices(){
+  const defaults=[
+    {name:'Nişan & Söz Töreni',icon:'💍',desc:'En özel "evet" anını rüya gibi bir atmosferde kutlayın.',features:['Konsept & Dekorasyon Tasarımı','Çiçek Aranjmanı','İkram & Pasta Koordinasyonu','Fotoğraf & Video Planlaması','Davetiye Tasarımı']},
+    {name:'Kına Gecesi',icon:'🪷',desc:'Geleneği modernlikle harmanlayarak unutulmaz bir gece yaratıyoruz.',features:['Geleneksel & Modern Dekor','Kına Tepsisi Koordinasyonu','Müzik & Eğlence Programı','Kına Mumu & Aksesuar','Misafir Ağırlama Planı']},
+    {name:'Doğum Günü & Etkinlik',icon:'🎂',desc:'Temasal partilerden kurumsal etkinliklere her organizasyon özeldir.',features:['Temasal Dekorasyon','Balon & Pano Tasarımı','Özel Pasta Koordinasyonu','Sürpriz Organizasyonu','Kurumsal Etkinlik Yönetimi']}
+  ];
+  return defaults.map((d,i)=>({
+    name:siteText(`service${i+1}Name`,d.name),
+    icon:siteText(`service${i+1}Icon`,d.icon),
+    desc:siteText(`service${i+1}Desc`,d.desc),
+    features:siteLines(`service${i+1}Features`,d.features)
+  }));
+}
 function setText(selector,key){
   const value=siteText(key);
   if(!value)return;
@@ -1153,6 +1170,8 @@ function applySiteContent(){
   setText('.ft-desc','footerDesc');setIndexedText('.ft-col .ft-col-lbl',0,'footerServicesTitle');setIndexedText('.ft-col .ft-col-lbl',1,'footerContactTitle');
   for(let i=1;i<=4;i++)setIndexedText('.ft-col a',i-1,`footerService${i}`);
   setText('.ft-copy','footerCopy');
+  if(typeof buildServices==='function')buildServices();
+  if(typeof buildPackages==='function')buildPackages();
   if(typeof renderFiveStarReviews==='function')renderFiveStarReviews();
 }
 window.applySiteContent=applySiteContent;
@@ -1199,7 +1218,7 @@ function getServices(){
     const saved=JSON.parse(localStorage.getItem('bk_services')||'[]');
     if(saved.length)return saved.sort((a,b)=>(a.order||0)-(b.order||0));
   }catch(e){}
-  return SERVICE_DEFAULT;
+  return getDefaultServices();
 }
 
 function buildServices(){
@@ -1220,7 +1239,7 @@ function getPackages(){
     const saved=JSON.parse(localStorage.getItem('bk_packages')||'[]');
     if(saved.length)return saved;
   }catch(e){}
-  return PACKAGE_DEFAULT;
+  return getDefaultPackages();
 }
 
 function buildPackages(){

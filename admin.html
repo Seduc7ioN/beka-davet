@@ -883,6 +883,19 @@ const SITE_CONTENT_GROUPS=[
     ['aboutTag','Hakkımızda Etiketi','Biz Kimiz'],['aboutTitle','Hakkımızda Başlığı','Tutkudan Doğduk'],
     ['contactTag','İletişim Etiketi','Bize Ulaşın'],['contactTitle','İletişim Başlığı','Hayalinizi Anlatın'],['contactSubtitle','İletişim Açıklaması','Ücretsiz danışma için bize yazın ya da arayın.']
   ]},
+  {title:'Paket Kartları',items:[
+    ['package1Name','Paket 1 Adı','Başlangıç'],['package1Price','Paket 1 Fiyatı','Fiyat görüşülür'],['package1Desc','Paket 1 Açıklaması','Küçük aile kutlamaları için konsept, temel dekor ve masa düzeni.',true],
+    ['package2Name','Paket 2 Adı','Premium'],['package2Price','Paket 2 Fiyatı','İhtiyaca göre'],['package2Desc','Paket 2 Açıklaması','Nişan, kına ve özel günler için detaylı konsept, dekor ve süreç planlama.',true],
+    ['package3Name','Paket 3 Adı','Özel Tasarım'],['package3Price','Paket 3 Fiyatı','Teklif alın'],['package3Desc','Paket 3 Açıklaması','Mekan, davetli sayısı ve tema tamamen size göre kurgulanır.',true]
+  ]},
+  {title:'Hizmet Kartları',items:[
+    ['service1Name','Hizmet 1 Adı','Nişan & Söz Töreni'],['service1Icon','Hizmet 1 İkonu','💍'],['service1Desc','Hizmet 1 Açıklaması','En özel "evet" anını rüya gibi bir atmosferde kutlayın.',true],
+    ['service1Features','Hizmet 1 Maddeleri','Konsept & Dekorasyon Tasarımı\nÇiçek Aranjmanı\nİkram & Pasta Koordinasyonu\nFotoğraf & Video Planlaması\nDavetiye Tasarımı',true],
+    ['service2Name','Hizmet 2 Adı','Kına Gecesi'],['service2Icon','Hizmet 2 İkonu','🪷'],['service2Desc','Hizmet 2 Açıklaması','Geleneği modernlikle harmanlayarak unutulmaz bir gece yaratıyoruz.',true],
+    ['service2Features','Hizmet 2 Maddeleri','Geleneksel & Modern Dekor\nKına Tepsisi Koordinasyonu\nMüzik & Eğlence Programı\nKına Mumu & Aksesuar\nMisafir Ağırlama Planı',true],
+    ['service3Name','Hizmet 3 Adı','Doğum Günü & Etkinlik'],['service3Icon','Hizmet 3 İkonu','🎂'],['service3Desc','Hizmet 3 Açıklaması','Temasal partilerden kurumsal etkinliklere her organizasyon özeldir.',true],
+    ['service3Features','Hizmet 3 Maddeleri','Temasal Dekorasyon\nBalon & Pano Tasarımı\nÖzel Pasta Koordinasyonu\nSürpriz Organizasyonu\nKurumsal Etkinlik Yönetimi',true]
+  ]},
   {title:'SSS Kartları',items:[
     ['faq1Title','SSS 1 Başlık','Ne kadar önce iletişime geçmeliyiz?'],['faq1Text','SSS 1 Cevap','Tarih uygunluğu ve hazırlık süresi için mümkünse etkinlikten 4-8 hafta önce görüşmenizi öneriyoruz.',true],
     ['faq2Title','SSS 2 Başlık','Paketler değiştirilebilir mi?'],['faq2Text','SSS 2 Cevap','Evet. Davetli sayısı, mekan, tema ve bütçeye göre tüm içerikleri birlikte şekillendiriyoruz.',true],
@@ -1254,7 +1267,7 @@ async function updateContent(collectionName,storageKey,id,data){
   LS.set(storageKey,LS.get(storageKey,[]).map(x=>x.id===id?{...x,...data}:x));
 }
 async function moveContent(collectionName,storageKey,id,direction){
-  const list=collectionName==='introSlides'?await getIntroSlides():await getServices();
+  const list=collectionName==='introSlides'?await getIntroSlides():collectionName==='packages'?await getPackages():await getServices();
   const i=list.findIndex(x=>x.id===id),j=i+direction;if(i<0||j<0||j>=list.length)return;
   const fb=FB();
   if(fb.firebaseReady){
@@ -1945,7 +1958,7 @@ async function renderPackages(){
   if(!el||!empty)return;
   if(!list.length){el.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
-  el.innerHTML=list.map(p=>{
+  el.innerHTML=list.map((p,i)=>{
     const id=jsStr(p.id);
     return`<div class="list-item">
       <div class="li-icon">📦</div>
@@ -1954,9 +1967,24 @@ async function renderPackages(){
         <div class="li-sub"><span>${esc(p.price||'Fiyat görüşülür')}</span></div>
         ${p.desc?`<div class="li-anniv gray">${esc(p.desc)}</div>`:''}
       </div>
-      <div class="li-actions"><button class="btn btn-red btn-sm" onclick="paketSil('${id}')">✕</button></div>
+      <div class="li-actions">
+        <button class="btn btn-outline btn-sm" onclick="paketDuzenle('${id}')">Düzenle</button>
+        <button class="btn btn-outline btn-sm" onclick="paketMove('${id}',-1)" ${i===0?'disabled':''}>↑</button>
+        <button class="btn btn-outline btn-sm" onclick="paketMove('${id}',1)" ${i===list.length-1?'disabled':''}>↓</button>
+        <button class="btn btn-red btn-sm" onclick="paketSil('${id}')">✕</button>
+      </div>
     </div>`;
   }).join('');
+}
+async function paketMove(id,d){await moveContent('packages','bk_packages',id,d);await renderPackages();}
+async function paketDuzenle(id){
+  const p=(await getPackages()).find(x=>x.id===id);if(!p)return;
+  const name=prompt('Paket adı',p.name||'');if(name===null)return;
+  const price=prompt('Fiyat',p.price||'');if(price===null)return;
+  const desc=prompt('Açıklama',p.desc||'');if(desc===null)return;
+  if(!name.trim()){toast('Paket adı zorunlu');return;}
+  await updateContent('packages','bk_packages',id,{name:name.trim().slice(0,80),price:price.trim().slice(0,80),desc:desc.trim().slice(0,320)});
+  await renderPackages();toast('Paket güncellendi');
 }
 async function paketSil(id){
   if(!confirm('Paket silinsin mi?'))return;
