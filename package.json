@@ -5,6 +5,9 @@
   "engines": {
     "node": "22.x"
   },
+  "scripts": {
+    "check": "node scripts/check-site.js"
+  },
   "dependencies": {
     "firebase-admin": "^13.6.0"
   }

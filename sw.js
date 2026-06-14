@@ -1,8 +1,12 @@
-const CACHE = 'beka-davet-v12';
+const CACHE = 'beka-davet-v14';
 const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/og-image.jpg',
+  '/icons/icon-152.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
 ];
 
 try {
