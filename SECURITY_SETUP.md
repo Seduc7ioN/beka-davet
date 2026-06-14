@@ -40,6 +40,10 @@ firebase deploy --only firestore:rules
 
 Until these rules are deployed, the live database keeps using the current Firebase Console rules.
 
-## 4. Keep legacy access only during transition
+## 4. Legacy access removed
 
-The old `admin / beka2025` fallback remains in the code so the working panel is not locked out during setup. After Firebase Auth is confirmed in production, remove the fallback password path from `admin.html`.
+The old local fallback password path has been removed. The admin panel now requires Firebase Authentication and the matching `admins/{uid}` document.
+
+## 5. Public offer form
+
+The public offer form writes through the Vercel API route `/api/create-offer`. Firestore no longer allows public writes to `teklifler`; only admins and server-side Firebase Admin SDK can write there.

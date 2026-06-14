@@ -11,39 +11,6 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
-    function validOptionalString(field, maxLength) {
-      return !(field in request.resource.data)
-        || (request.resource.data[field] is string
-          && request.resource.data[field].size() <= maxLength);
-    }
-
-    function validOfferCreate() {
-      return request.resource.data.keys().hasOnly([
-          'ad',
-          'tel',
-          'tur',
-          'tarih',
-          'butce',
-          'kaynak',
-          'mesaj',
-          'tarihEklendi',
-          'durum'
-        ])
-        && request.resource.data.ad is string
-        && request.resource.data.ad.size() > 1
-        && request.resource.data.ad.size() <= 120
-        && request.resource.data.tel is string
-        && request.resource.data.tel.size() >= 10
-        && request.resource.data.tel.size() <= 32
-        && validOptionalString('tur', 80)
-        && validOptionalString('tarih', 32)
-        && validOptionalString('butce', 80)
-        && validOptionalString('kaynak', 80)
-        && validOptionalString('mesaj', 1000)
-        && request.resource.data.durum == 'yeni'
-        && request.resource.data.tarihEklendi is timestamp;
-    }
-
     match /admins/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow write: if isAdmin();
@@ -93,8 +60,11 @@ service cloud.firestore {
     }
 
     match /teklifler/{id} {
-      allow create: if validOfferCreate();
-      allow read, update, delete: if isAdmin();
+      allow read, write: if isAdmin();
+    }
+
+    match /rateLimits/{id} {
+      allow read, write: if isAdmin();
     }
 
     match /customers/{id} {

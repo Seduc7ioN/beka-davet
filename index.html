@@ -1570,18 +1570,15 @@ async function sendForm(){
 
   const veri = { ad:ad.slice(0,120), tel:tel.slice(0,32), tur:(tur||'').slice(0,80), tarih, butce:butce.slice(0,80), kaynak:kaynak.slice(0,80), mesaj:(mesaj||'').slice(0,1000), tarihEklendi: new Date().toISOString(), durum:'yeni' };
 
-  // Firebase'e yaz
-  const fb = window._fb;
   try{
-    if(fb && fb.firebaseReady){
-      const offerRef=await fb.addDoc(fb.collection(fb.db,'teklifler'), {...veri, tarihEklendi: fb.serverTimestamp()});
-      await fetch('/api/notify-new-offer',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({offerId:offerRef.id})
-      }).catch(e=>console.warn('Anlık teklif bildirimi gönderilemedi:',e));
-    } else {
-      // Fallback localStorage
+    const res=await fetch('/api/create-offer',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(veri)
+    });
+    const out=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(out.error||'offer-submit-failed');
+    if(location.hostname==='localhost'||location.hostname.startsWith('127.')){
       const list = JSON.parse(localStorage.getItem('bk_teklifler')||'[]');
       list.unshift(veri);
       localStorage.setItem('bk_teklifler', JSON.stringify(list));
@@ -1590,8 +1587,11 @@ async function sendForm(){
     b.style.display='none';
     document.getElementById('fOk').style.display='block';
   }catch(e){
-    console.warn('Firebase yazma hatası:', e);
-    alert('Talep gönderilemedi. Lütfen WhatsApp veya telefon üzerinden bize ulaşın.');
+    console.warn('Teklif gönderim hatası:', e);
+    const msg=e.message==='rate-limited'
+      ? 'Kısa sürede çok fazla talep gönderildi. Lütfen biraz sonra tekrar deneyin.'
+      : 'Talep gönderilemedi. Lütfen WhatsApp veya telefon üzerinden bize ulaşın.';
+    alert(msg);
     b.textContent='Teklif Talep Et'; b.disabled=false;
   }
 }

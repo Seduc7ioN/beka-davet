@@ -51,7 +51,7 @@ Firebase tarafında sadece Firestore rules deploy edilir:
 npx -y firebase-tools deploy --only firestore:rules --project bekadavet-bfe6f
 ```
 
-Vercel cron Hobby planda günde 1 kez, Türkiye saatiyle yaklaşık 09:00-09:59 arasında çalışır. Aktif ajanda ve teklif hatırlatmalarını kayıtlı admin cihazlarına tek bildirim olarak gönderir.
+Vercel cron Türkiye saatiyle yaklaşık 09:00 ve 18:00 saatlerinde çalışır. Yeni fiyat teklifleri ise `/api/create-offer` üzerinden kaydedildiği anda bildirim gönderir.
 
 ## Notlar
 
