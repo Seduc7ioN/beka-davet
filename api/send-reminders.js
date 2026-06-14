@@ -204,7 +204,7 @@ async function sendToTokens(db, messaging, tokens, payload) {
   return {successCount, failureCount, invalidTokenCount: invalidTokens.length};
 }
 
-async function runReminderPushes() {
+async function runReminderPushes({force = false} = {}) {
   const {db, messaging} = getAdminClients();
   const settingsSnap = await db.collection('settings').doc('push').get();
   const settings = settingsSnap.exists ? settingsSnap.data() : {};
@@ -225,8 +225,18 @@ async function runReminderPushes() {
   const agenda = agendaSnap.docs.map(d => ({id: d.id, ...d.data()}));
   const offers = offersSnap.docs.map(d => ({id: d.id, ...d.data()}));
   const sentKeys = new Set(sentSnap.exists ? (sentSnap.data().sentKeys || []) : []);
-  const due = buildReminderItems(agenda, offers, today).filter(item => !sentKeys.has(item.key));
-  if (!due.length) return {skipped: true, reason: 'no-due-reminders'};
+  const candidates = buildReminderItems(agenda, offers, today);
+  const due = force ? candidates : candidates.filter(item => !sentKeys.has(item.key));
+  if (!due.length) return {
+    skipped: true,
+    reason: 'no-due-reminders',
+    today,
+    tokenCount: tokens.length,
+    agendaCount: agenda.length,
+    offerCount: offers.length,
+    candidateCount: candidates.length,
+    alreadySentCount: candidates.filter(item => sentKeys.has(item.key)).length
+  };
 
   const first = due[0];
   const body = due.length === 1 ? first.body : `${first.body} · +${due.length - 1} uyarı daha`;
@@ -236,10 +246,12 @@ async function runReminderPushes() {
     tag: `beka-reminders-${today}`
   });
 
-  await db.collection('pushState').doc(today).set({
-    sentKeys: FieldValue.arrayUnion(...due.map(item => item.key)),
-    updatedAt: FieldValue.serverTimestamp()
-  }, {merge: true});
+  if (sendResult.successCount > 0) {
+    await db.collection('pushState').doc(today).set({
+      sentKeys: FieldValue.arrayUnion(...due.map(item => item.key)),
+      updatedAt: FieldValue.serverTimestamp()
+    }, {merge: true});
+  }
 
   return {
     skipped: false,
@@ -261,7 +273,9 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const result = await runReminderPushes();
+    const force = req.query && req.query.force === '1';
+    const result = await runReminderPushes({force});
+    console.log('send-reminders result', result);
     return res.status(200).json({ok: true, ...result});
   } catch (error) {
     console.error('send-reminders failed', error);
