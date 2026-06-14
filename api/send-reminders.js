@@ -103,7 +103,7 @@ function tsToDate(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function buildReminderItems(agenda, offers, today) {
+function buildReminderItems(agenda, offers, today, slot = 'morning') {
   const items = [];
 
   agenda.forEach(item => {
@@ -111,12 +111,16 @@ function buildReminderItems(agenda, offers, today) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ''))) return;
     const diff = dayDiff(today, date);
     const lead = reminderLeadDays(item.hatirlatma);
-    if (lead < 0 || diff < 0 || diff > lead) return;
+    if (lead < 0 || diff < 0) return;
+    const isDue = slot === 'evening'
+      ? diff === 1 && lead >= 1
+      : diff === 0 || (lead > 1 && diff === lead);
+    if (!isDue) return;
 
     const title = item.baslik || 'Ajanda notu';
     const body = [relativeDayLabel(diff), item.saat, item.konum].filter(Boolean).join(' · ');
     items.push({
-      key: `ajanda:${item.id || title}:${date}:${item.saat || ''}`,
+      key: `ajanda:${slot}:${item.id || title}:${date}:${item.saat || ''}`,
       title: 'Beka Davet Ajanda',
       body: `${title}${body ? ' · ' + body : ''}`,
       sort: diff * 1440 + (item.saat ? Number(String(item.saat).replace(':', '')) : 9999)
@@ -125,12 +129,14 @@ function buildReminderItems(agenda, offers, today) {
 
   offers.forEach(offer => {
     const status = offer.durum || 'yeni';
-    if (status === 'yeni') {
+    if (status === 'yeni' && !offer.pushNotifiedAt) {
       const created = tsToDate(offer.tarihEklendi);
       const createdKey = created ? istanbulParts(created) : null;
       const createdText = createdKey ? `${createdKey.day}.${createdKey.month}.${createdKey.year}` : 'yeni talep';
       items.push({
         key: `teklif:${offer.id || offer.tel || offer.ad || createdText}`,
+        kind: 'new-offer',
+        offerId: offer.id,
         title: 'Yeni Teklif Talebi',
         body: [offer.ad || 'İsimsiz', offer.tel, offer.tur, createdText].filter(Boolean).join(' · '),
         sort: -20
@@ -139,9 +145,10 @@ function buildReminderItems(agenda, offers, today) {
 
     if (offer.tarih && !['onaylandi', 'kaybedildi'].includes(status)) {
       const diff = dayDiff(today, offer.tarih);
-      if (diff >= 0 && diff <= 3) {
+      const isDue = slot === 'evening' ? diff === 1 : diff === 0 || diff === 3;
+      if (isDue) {
         items.push({
-          key: `teklif-date:${offer.id || offer.tel || offer.ad}:${offer.tarih}`,
+          key: `teklif-date:${slot}:${offer.id || offer.tel || offer.ad}:${offer.tarih}`,
           title: 'Teklif Tarihi Yaklaşıyor',
           body: [offer.ad || 'Teklif', relativeDayLabel(diff), offer.tur, status].filter(Boolean).join(' · '),
           sort: diff * 1440 - 10
@@ -204,7 +211,7 @@ async function sendToTokens(db, messaging, tokens, payload) {
   return {successCount, failureCount, invalidTokenCount: invalidTokens.length};
 }
 
-async function runReminderPushes({force = false} = {}) {
+async function runReminderPushes({force = false, slot = 'morning'} = {}) {
   const {db, messaging} = getAdminClients();
   const settingsSnap = await db.collection('settings').doc('push').get();
   const settings = settingsSnap.exists ? settingsSnap.data() : {};
@@ -225,7 +232,7 @@ async function runReminderPushes({force = false} = {}) {
   const agenda = agendaSnap.docs.map(d => ({id: d.id, ...d.data()}));
   const offers = offersSnap.docs.map(d => ({id: d.id, ...d.data()}));
   const sentKeys = new Set(sentSnap.exists ? (sentSnap.data().sentKeys || []) : []);
-  const candidates = buildReminderItems(agenda, offers, today);
+  const candidates = buildReminderItems(agenda, offers, today, slot);
   const due = force ? candidates : candidates.filter(item => !sentKeys.has(item.key));
   if (!due.length) return {
     skipped: true,
@@ -247,15 +254,22 @@ async function runReminderPushes({force = false} = {}) {
   });
 
   if (sendResult.successCount > 0) {
-    await db.collection('pushState').doc(today).set({
-      sentKeys: FieldValue.arrayUnion(...due.map(item => item.key)),
-      updatedAt: FieldValue.serverTimestamp()
-    }, {merge: true});
+    const notifiedOfferIds = due.filter(item => item.kind === 'new-offer' && item.offerId).map(item => item.offerId);
+    await Promise.all([
+      db.collection('pushState').doc(today).set({
+        sentKeys: FieldValue.arrayUnion(...due.map(item => item.key)),
+        updatedAt: FieldValue.serverTimestamp()
+      }, {merge: true}),
+      ...notifiedOfferIds.map(id => db.collection('teklifler').doc(id).set({
+        pushNotifiedAt: FieldValue.serverTimestamp()
+      }, {merge: true}))
+    ]);
   }
 
   return {
     skipped: false,
     today,
+    slot,
     reminderCount: due.length,
     tokenCount: tokens.length,
     ...sendResult
@@ -274,7 +288,10 @@ module.exports = async function handler(req, res) {
 
   try {
     const force = req.query && req.query.force === '1';
-    const result = await runReminderPushes({force});
+    const requestedSlot = req.query && req.query.slot;
+    const schedule = String(req.headers['x-vercel-cron-schedule'] || '');
+    const slot = requestedSlot === 'evening' || schedule === '0 15 * * *' ? 'evening' : 'morning';
+    const result = await runReminderPushes({force, slot});
     console.log('send-reminders result', result);
     return res.status(200).json({ok: true, ...result});
   } catch (error) {
