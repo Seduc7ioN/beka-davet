@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin.html
 Disallow: /api/
 
-Sitemap: https://bekadavet.com/sitemap.xml
+Sitemap: https://beka-davet.vercel.app/sitemap.xml
