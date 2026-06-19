@@ -64,10 +64,16 @@ else {
 const admin = read('admin.html');
 if (!admin.includes('noindex, nofollow')) fail('admin.html noindex meta eksik');
 else pass('admin noindex meta var');
+if (!admin.includes('id="reviewEditor"') || !admin.includes('function saveReviews()')) fail('admin Google yorum editoru eksik');
+else pass('admin Google yorum editoru var');
 
 const index = read('index.html');
 if (!index.includes('/api/create-offer')) fail('teklif formu güvenli API kullanmıyor');
 else pass('teklif formu /api/create-offer kullanıyor');
+if (!index.includes('function reviewsFromSiteContent') || !index.includes('content.reviewsJson')) fail('site Google yorum listesini okumuyor');
+else pass('site Google yorum listesini okuyor');
+if (!index.includes('Number(r.rating)===5')) fail('site yorum vitrini 5 yıldız filtresi eksik');
+else pass('site yorum vitrini 5 yıldız filtreli');
 if (index.includes('/api/notify-new-offer')) fail('eski public notify endpoint referansı kalmış');
 else pass('eski public notify endpoint referansı yok');
 if (index.includes('og:image" content="data:')) fail('og:image hâlâ data URI');

@@ -676,6 +676,15 @@ body{
           <button class="btn btn-outline" onclick="renderSiteContentForm()" style="margin-top:8px">Yenile</button>
         </div>
       </div>
+      <div class="card">
+        <div class="card-title">Google Yorumları</div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          Vitrindeki memnuniyet yorumlarını buradan ekleyip düzenleyin. Sitede yalnızca aktif ve 5 yıldızlı yorumlar döner.
+        </div>
+        <div id="reviewEditor"><div class="empty-state"><span class="empty-icon">⭐</span><span class="empty-txt">Yorumlar yükleniyor</span></div></div>
+        <button class="btn btn-outline" onclick="addReviewRow()" style="margin-top:8px">+ Yorum Ekle</button>
+        <button class="btn btn-gold" onclick="saveReviews()" id="btnReviewsSave" style="margin-top:8px">✓ Yorumları Siteye Yansıt</button>
+      </div>
       <!-- Teklif talepleri -->
       <div class="card">
         <div class="card-title">Teklif Talepleri</div>
@@ -947,6 +956,33 @@ const SITE_CONTENT_GROUPS=[
   ]}
 ];
 const SITE_CONTENT_DEFAULTS=SITE_CONTENT_GROUPS.reduce((a,g)=>{g.items.forEach(i=>{a[i[0]]=i[2];});return a;},{});
+let reviewDrafts=[];
+let reviewsLoaded=false;
+function defaultReviewsFromContent(data=SITE_CONTENT_DEFAULTS){
+  const reviews=[];
+  for(let i=1;i<=20;i++){
+    const name=data[`review${i}Name`],meta=data[`review${i}Meta`],text=data[`review${i}Text`];
+    if(name||meta||text)reviews.push({id:'review_'+i,name:name||'',meta:meta||'',text:text||'',rating:5,active:true});
+  }
+  return reviews;
+}
+function parseReviewsJson(data){
+  try{
+    const raw=typeof data.reviewsJson==='string'?JSON.parse(data.reviewsJson):data.reviewsJson;
+    if(Array.isArray(raw))return raw.map((r,i)=>({
+      id:String(r.id||('review_'+Date.now()+'_'+i)),
+      name:String(r.name||'').slice(0,100),
+      meta:String(r.meta||'Google Yorumu').slice(0,100),
+      text:String(r.text||'').slice(0,600),
+      rating:Math.max(1,Math.min(5,Number(r.rating)||5)),
+      active:r.active!==false
+    })).filter(r=>r.name||r.text);
+  }catch(e){}
+  return null;
+}
+function reviewsFromContent(data){
+  return parseReviewsJson(data)||defaultReviewsFromContent(data);
+}
 function showApp(){
   document.getElementById('loginWrap').classList.add('gone');
   document.getElementById('app').classList.add('visible');
@@ -1004,7 +1040,7 @@ function goTab(name,el){
   if(name==='musteriler')renderCRM();
   if(name==='vitrin'){renderMedia();renderIntroSlides();renderGallery();renderMuz();}
   if(name==='ajanda')initAjanda();
-  if(name==='ayarlar'){renderSiteContentForm();renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();loadPushSettings();}
+  if(name==='ayarlar'){renderSiteContentForm();renderReviewManager();renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();loadPushSettings();}
   if(name==='home')renderDashboard();
 }
 
@@ -1306,7 +1342,7 @@ async function getSiteContent(){
   return adminRead('Site içeriği',async fb=>{const s=await fb.getDoc(fb.doc(fb.db,'settings','siteContent'));return s.exists()?{...SITE_CONTENT_DEFAULTS,...(s.data().fields||{})}:{...SITE_CONTENT_DEFAULTS};},()=>({...SITE_CONTENT_DEFAULTS,...LS.get('bk_site_content',{})}));
 }
 async function setSiteContent(data){
-  return adminWrite('Site içeriği',async fb=>fb.setDoc(fb.doc(fb.db,'settings','siteContent'),{fields:data,updatedAt:fb.serverTimestamp()},{merge:true}),()=>LS.set('bk_site_content',data));
+  return adminWrite('Site içeriği',async fb=>fb.setDoc(fb.doc(fb.db,'settings','siteContent'),{fields:data,updatedAt:fb.serverTimestamp()},{merge:true}),()=>LS.set('bk_site_content',{...LS.get('bk_site_content',{}),...data}));
 }
 async function addPackage(data){
   return adminWrite('Paket',async fb=>{const r=await fb.addDoc(fb.collection(fb.db,'packages'),{...data,addedAt:fb.serverTimestamp()});return r.id;},()=>{const l=LS.get('bk_packages',[]);const item={...data,id:Date.now()+'',addedAt:new Date().toISOString()};l.unshift(item);LS.set('bk_packages',l);return item.id;});
@@ -1982,13 +2018,90 @@ async function renderSiteContentForm(){
   const wrap=document.getElementById('siteContentFields');
   if(!wrap)return;
   const data=await getSiteContent();
-  wrap.innerHTML=SITE_CONTENT_GROUPS.map(group=>`<div class="content-group">
+  wrap.innerHTML=SITE_CONTENT_GROUPS.filter(group=>group.title!=='5 Yıldızlı Yorumlar').map(group=>`<div class="content-group">
     <div class="content-group-title">${esc(group.title)}</div>
     <div class="content-grid">${group.items.map(([key,label,def,multi])=>`<div class="fg">
       <label>${esc(label)}</label>
       ${multi?`<textarea data-site-key="${escAttr(key)}">${esc(data[key]??def)}</textarea>`:`<input type="text" data-site-key="${escAttr(key)}" value="${escAttr(data[key]??def)}"/>`}
     </div>`).join('')}</div>
   </div>`).join('');
+}
+async function renderReviewManager(){
+  const wrap=document.getElementById('reviewEditor');
+  if(!wrap)return;
+  if(!reviewsLoaded){
+    reviewDrafts=reviewsFromContent(await getSiteContent());
+    reviewsLoaded=true;
+  }
+  wrap.innerHTML=reviewDrafts.length?reviewDrafts.map((r,i)=>`<div class="content-group" data-review-row="${i}">
+    <div class="content-group-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>${i+1}. Yorum</span>
+      <span style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="moveReviewRow(${i},-1)" ${i===0?'disabled':''}>↑</button>
+        <button class="btn btn-outline btn-sm" onclick="moveReviewRow(${i},1)" ${i===reviewDrafts.length-1?'disabled':''}>↓</button>
+        <button class="btn btn-red btn-sm" onclick="deleteReviewRow(${i})">Sil</button>
+      </span>
+    </div>
+    <div class="content-grid">
+      <div class="fg"><label>İsim</label><input type="text" data-review-field="name" value="${escAttr(r.name)}" placeholder="Ayşe Hanım"/></div>
+      <div class="fg"><label>Tür / Kaynak</label><input type="text" data-review-field="meta" value="${escAttr(r.meta||'Google Yorumu')}" placeholder="Google Yorumu"/></div>
+      <div class="fg"><label>Yıldız</label><select data-review-field="rating">
+        ${[5,4,3,2,1].map(n=>`<option value="${n}" ${Number(r.rating)===n?'selected':''}>${n} Yıldız</option>`).join('')}
+      </select></div>
+      <div class="fg"><label>Durum</label><select data-review-field="active">
+        <option value="true" ${r.active!==false?'selected':''}>Aktif</option>
+        <option value="false" ${r.active===false?'selected':''}>Gizli</option>
+      </select></div>
+      <div class="fg" style="grid-column:1/-1"><label>Yorum Metni</label><textarea data-review-field="text" placeholder="Google yorum metni...">${esc(r.text)}</textarea></div>
+    </div>
+  </div>`).join(''):'<div class="empty-state"><span class="empty-icon">⭐</span><span class="empty-txt">Henüz yorum yok</span></div>';
+}
+function collectReviewDrafts(){
+  const rows=[...document.querySelectorAll('[data-review-row]')];
+  reviewDrafts=rows.map((row,i)=>{
+    const field=name=>row.querySelector(`[data-review-field="${name}"]`);
+    return {
+      id:reviewDrafts[i]?.id||('review_'+Date.now()+'_'+i),
+      name:field('name')?.value.trim().slice(0,100)||'',
+      meta:field('meta')?.value.trim().slice(0,100)||'Google Yorumu',
+      rating:Number(field('rating')?.value)||5,
+      active:field('active')?.value!=='false',
+      text:field('text')?.value.trim().slice(0,600)||''
+    };
+  });
+  return reviewDrafts;
+}
+function addReviewRow(){
+  collectReviewDrafts();
+  reviewDrafts.push({id:'review_'+Date.now(),name:'',meta:'Google Yorumu',rating:5,active:true,text:''});
+  renderReviewManager();
+}
+function deleteReviewRow(i){
+  collectReviewDrafts();
+  reviewDrafts.splice(i,1);
+  renderReviewManager();
+}
+function moveReviewRow(i,direction){
+  collectReviewDrafts();
+  const j=i+direction;
+  if(j<0||j>=reviewDrafts.length)return;
+  [reviewDrafts[i],reviewDrafts[j]]=[reviewDrafts[j],reviewDrafts[i]];
+  renderReviewManager();
+}
+async function saveReviews(){
+  const btn=document.getElementById('btnReviewsSave');
+  const reviews=collectReviewDrafts().filter(r=>r.name&&r.text).slice(0,30);
+  btn.disabled=true;btn.textContent='Yayınlanıyor...';
+  try{
+    await setSiteContent({reviewsJson:JSON.stringify(reviews)});
+    reviewDrafts=reviews;
+    await renderReviewManager();
+    toast('Google yorumları yayına alındı');
+  }catch(e){
+    toast('Yorumlar kaydedilemedi',3600);
+  }finally{
+    btn.disabled=false;btn.textContent='✓ Yorumları Siteye Yansıt';
+  }
 }
 async function saveSiteContent(){
   const btn=document.getElementById('btnSiteContentSave');
@@ -2082,7 +2195,7 @@ function printContract(){if(!document.getElementById('contractDoc').innerHTML)re
 
 async function initApp(){
   updateFBStatus();
-  await Promise.all([renderDashboard(),renderCRM(),renderMedia(),renderIntroSlides(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderServices(),renderReports(),updateBadges(),loadPushSettings(),renderSiteContentForm()]);
+  await Promise.all([renderDashboard(),renderCRM(),renderMedia(),renderIntroSlides(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderServices(),renderReports(),updateBadges(),loadPushSettings(),renderSiteContentForm(),renderReviewManager()]);
 }
 window._appReady=()=>{updateFBStatus();if(document.getElementById('app').classList.contains('visible'))initApp();};
 window.addEventListener('authready',()=>{if(window._authUser&&!document.getElementById('app').classList.contains('visible'))showApp();});

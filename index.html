@@ -1506,6 +1506,21 @@ function reviewCard(r){
     <div class="review-meta">${esc(r.meta)}</div>
   </div>`;
 }
+function reviewsFromSiteContent(content){
+  try{
+    const raw=typeof content.reviewsJson==='string'?JSON.parse(content.reviewsJson):content.reviewsJson;
+    if(Array.isArray(raw)){
+      return raw.map(r=>({
+        rating:Number(r.rating)||5,
+        name:String(r.name||''),
+        meta:String(r.meta||'Google Yorumu'),
+        text:String(r.text||''),
+        active:r.active!==false
+      })).filter(r=>r.active&&r.name&&r.text);
+    }
+  }catch(e){}
+  return null;
+}
 function renderFiveStarReviews(){
   const content=window._siteContent||{};
   const getReview=(r,i)=>({
@@ -1514,13 +1529,16 @@ function renderFiveStarReviews(){
     meta:siteText(`review${i+1}Meta`,r.meta),
     text:siteText(`review${i+1}Text`,r.text)
   });
-  const fiveStars = REVIEWS.map(getReview).filter(r=>Number(r.rating)===5);
+  const managedReviews=reviewsFromSiteContent(content);
+  const fiveStars = (managedReviews||REVIEWS.map(getReview)).filter(r=>Number(r.rating)===5);
   const row1 = fiveStars.filter((_,i)=>i%2===0);
   const row2 = fiveStars.filter((_,i)=>i%2===1);
   const row2Source = row2.length?row2:row1;
   const repeat = arr => [...arr,...arr,...arr,...arr];
   const band1=document.getElementById('reviewBand1');
   const band2=document.getElementById('reviewBand2');
+  if(!band1||!band2)return;
+  if(!fiveStars.length){band1.innerHTML='';band2.innerHTML='';return;}
   band1.innerHTML = repeat(row1).map(reviewCard).join('');
   band2.innerHTML = repeat(row2Source).map(reviewCard).join('');
   setupBandLoop(band1,row1.length);
