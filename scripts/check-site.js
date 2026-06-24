@@ -66,6 +66,8 @@ if (!admin.includes('noindex, nofollow')) fail('admin.html noindex meta eksik');
 else pass('admin noindex meta var');
 if (!admin.includes('id="reviewEditor"') || !admin.includes('function saveReviews()')) fail('admin Google yorum editoru eksik');
 else pass('admin Google yorum editoru var');
+if (!admin.includes('id="siteImageEditor"') || !admin.includes('function saveSiteImages()')) fail('admin ana görsel yönetimi eksik');
+else pass('admin ana görsel yönetimi var');
 
 const index = read('index.html');
 if (!index.includes('/api/create-offer')) fail('teklif formu güvenli API kullanmıyor');
@@ -74,6 +76,8 @@ if (!index.includes('function reviewsFromSiteContent') || !index.includes('conte
 else pass('site Google yorum listesini okuyor');
 if (!index.includes('Number(r.rating)===5')) fail('site yorum vitrini 5 yıldız filtresi eksik');
 else pass('site yorum vitrini 5 yıldız filtreli');
+if (!index.includes('heroImageUrl') || !index.includes('aboutImageUrl') || !index.includes('setImageSrc')) fail('site ana görselleri yönetimden okumuyor');
+else pass('site ana görselleri yönetimden okuyor');
 if (index.includes('/api/notify-new-offer')) fail('eski public notify endpoint referansı kalmış');
 else pass('eski public notify endpoint referansı yok');
 if (index.includes('og:image" content="data:')) fail('og:image hâlâ data URI');
@@ -86,8 +90,8 @@ if (/<img[^>]+src="data:image/i.test(index)) fail('HTML img içinde data URI kal
 else pass('HTML img görselleri dosya URL');
 
 const sw = read('sw.js');
-if (!/beka-davet-v14/.test(sw)) fail('PWA cache versiyonu v14 değil');
-else pass('PWA cache v14');
+if (!/beka-davet-v15/.test(sw)) fail('PWA cache versiyonu v15 değil');
+else pass('PWA cache v15');
 
 const vercel = json('vercel.json');
 const headerRules = JSON.stringify(vercel.headers || []);

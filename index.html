@@ -808,7 +808,7 @@ try {
 <!-- ══ HERO ══ -->
 <section class="hero">
   <div class="hero-bg">
-    <img src="https://images.unsplash.com/photo-1519741497674-611481863552?w=1600&q=80&fit=crop&auto=format" alt=""
+    <img id="heroBgImage" src="https://images.unsplash.com/photo-1519741497674-611481863552?w=1600&q=80&fit=crop&auto=format" alt=""
       onerror="this.style.display='none'"/>
   </div>
   <div class="hero-content">
@@ -909,7 +909,7 @@ try {
 
 <!-- ══ HAKKIMIZDA ══ -->
 <section id="hakkimizda" style="padding:0">
-  <div class="abt-img"><img src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=900&q=80&fit=crop&auto=format" alt="" onerror="this.style.display='none'"/></div>
+  <div class="abt-img"><img id="aboutSectionImage" src="https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=900&q=80&fit=crop&auto=format" alt="" onerror="this.style.display='none'"/></div>
   <div class="abt-body reveal">
     <div class="s-tag" style="justify-content:flex-start">Biz Kimiz</div>
     <h2 class="s-title" style="text-align:left">Tutkudan <em>Doğduk</em></h2>
@@ -1088,6 +1088,11 @@ function setAttr(selector,attr,key,format){
   if(!value)return;
   document.querySelectorAll(selector).forEach(el=>{el.setAttribute(attr,format?format(value):value);});
 }
+function setImageSrc(selector,key){
+  const value=safeUrl(siteText(key));
+  if(!value)return;
+  document.querySelectorAll(selector).forEach(el=>{el.src=value;el.style.display='';});
+}
 function setClosestLabel(selector,key){
   const value=siteText(key);
   if(!value)return;
@@ -1125,6 +1130,7 @@ function applySiteContent(){
   setText('.hero-sub','heroSubtitle');
   setText('.btn-rose','heroPrimary');
   setText('.btn-ghost-r','heroSecondary');
+  setImageSrc('#heroBgImage','heroImageUrl');
   setText('.stats-inner .stat-item:nth-child(1) .stat-lbl','stat1Label');
   setText('.stats-inner .stat-item:nth-child(2) .stat-lbl','stat2Label');
   setText('.stats-inner .stat-item:nth-child(3) .stat-lbl','stat3Label');
@@ -1145,6 +1151,7 @@ function applySiteContent(){
   for(let i=1;i<=4;i++){setText(`#surec .proc-step:nth-child(${i}) .proc-ttl`,`process${i}Title`);setText(`#surec .proc-step:nth-child(${i}) .proc-txt`,`process${i}Text`);}
   setText('#hakkimizda .s-tag','aboutTag');setText('#hakkimizda .s-title','aboutTitle');
   setText('#hakkimizda .abt-p:nth-of-type(1)','aboutP1');setText('#hakkimizda .abt-p:nth-of-type(2)','aboutP2');setText('#hakkimizda .abt-sig','aboutSignature');
+  setImageSrc('#aboutSectionImage','aboutImageUrl');
   setText('#iletisim .s-tag','contactTag');setText('#iletisim .s-title','contactTitle');setText('#iletisim .s-sub','contactSubtitle');
   setText('#iletisim .c-row:nth-child(1) .c-lbl','phoneLabel');setText('#iletisim .c-row:nth-child(1) .c-val','phoneDisplay');
   setText('#iletisim .c-row:nth-child(2) .c-lbl','whatsappLabel');setText('#iletisim .c-row:nth-child(2) .c-val','whatsappDisplay');

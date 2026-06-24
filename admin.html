@@ -677,6 +677,15 @@ body{
         </div>
       </div>
       <div class="card">
+        <div class="card-title">Ana Görseller</div>
+        <div style="font-size:.7rem;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          1. görsel ana sayfa üst arka planıdır. 2. görsel Hakkımızda bölümündeki fotoğraftır. Dosya seçip siteye yansıttığınızda web ve PWA aynı veriyi okur.
+        </div>
+        <div id="siteImageEditor"><div class="empty-state"><span class="empty-icon">🖼</span><span class="empty-txt">Görseller yükleniyor</span></div></div>
+        <button class="btn btn-gold" onclick="saveSiteImages()" id="btnSiteImagesSave" style="margin-top:8px">✓ Görselleri Siteye Yansıt</button>
+        <button class="btn btn-outline" onclick="renderSiteImagesManager()" style="margin-top:8px">Yenile</button>
+      </div>
+      <div class="card">
         <div class="card-title">Google Yorumları</div>
         <div style="font-size:.7rem;color:var(--muted);line-height:1.7;margin-bottom:12px">
           Vitrindeki memnuniyet yorumlarını buradan ekleyip düzenleyin. Sitede yalnızca aktif ve 5 yıldızlı yorumlar döner.
@@ -877,6 +886,10 @@ const SITE_CONTENT_GROUPS=[
     ['heroTitle','Hero Başlık','Hayalinizdeki Anı Yaratıyoruz'],['heroSubtitle','Hero Açıklama','Nişandan kınaya, doğum gününden özel etkinliklere — her detayı titizlikle planlıyor, ömür boyu hatırlanacak anlar yaratıyoruz.',true],
     ['heroPrimary','Hero Ana Buton','Ücretsiz Danışma'],['heroSecondary','Hero İkinci Buton','Vitrine Bak']
   ]},
+  {title:'Ana Görseller',items:[
+    ['heroImageUrl','Hero Arka Plan Görseli','https://images.unsplash.com/photo-1519741497674-611481863552?w=1600&q=80&fit=crop&auto=format'],
+    ['aboutImageUrl','Hakkımızda Bölüm Görseli','https://images.unsplash.com/photo-1522673607200-164d1b6ce486?w=900&q=80&fit=crop&auto=format']
+  ]},
   {title:'Sayaçlar',items:[
     ['stat1Number','Sayaç 1 Sayı','10'],['stat1Label','Sayaç 1 Yazı','Yıllık Deneyim'],
     ['stat2Number','Sayaç 2 Sayı','500'],['stat2Label','Sayaç 2 Yazı','Organizasyon'],
@@ -958,6 +971,11 @@ const SITE_CONTENT_GROUPS=[
 const SITE_CONTENT_DEFAULTS=SITE_CONTENT_GROUPS.reduce((a,g)=>{g.items.forEach(i=>{a[i[0]]=i[2];});return a;},{});
 let reviewDrafts=[];
 let reviewsLoaded=false;
+let siteImageFiles={hero:null,about:null};
+const SITE_IMAGE_FIELDS=[
+  {id:'hero',key:'heroImageUrl',title:'1. Görsel - Hero Arka Plan',hint:'Ana sayfanın en üstündeki koyu arka plan görseli.'},
+  {id:'about',key:'aboutImageUrl',title:'2. Görsel - Hakkımızda',hint:'Tutkudan Doğduk bölümünün üstündeki / yanındaki görsel.'}
+];
 function defaultReviewsFromContent(data=SITE_CONTENT_DEFAULTS){
   const reviews=[];
   for(let i=1;i<=20;i++){
@@ -1040,7 +1058,7 @@ function goTab(name,el){
   if(name==='musteriler')renderCRM();
   if(name==='vitrin'){renderMedia();renderIntroSlides();renderGallery();renderMuz();}
   if(name==='ajanda')initAjanda();
-  if(name==='ayarlar'){renderSiteContentForm();renderReviewManager();renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();loadPushSettings();}
+  if(name==='ayarlar'){renderSiteContentForm();renderSiteImagesManager();renderReviewManager();renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();loadPushSettings();}
   if(name==='home')renderDashboard();
 }
 
@@ -2018,13 +2036,77 @@ async function renderSiteContentForm(){
   const wrap=document.getElementById('siteContentFields');
   if(!wrap)return;
   const data=await getSiteContent();
-  wrap.innerHTML=SITE_CONTENT_GROUPS.filter(group=>group.title!=='5 Yıldızlı Yorumlar').map(group=>`<div class="content-group">
+  wrap.innerHTML=SITE_CONTENT_GROUPS.filter(group=>!['5 Yıldızlı Yorumlar','Ana Görseller'].includes(group.title)).map(group=>`<div class="content-group">
     <div class="content-group-title">${esc(group.title)}</div>
     <div class="content-grid">${group.items.map(([key,label,def,multi])=>`<div class="fg">
       <label>${esc(label)}</label>
       ${multi?`<textarea data-site-key="${escAttr(key)}">${esc(data[key]??def)}</textarea>`:`<input type="text" data-site-key="${escAttr(key)}" value="${escAttr(data[key]??def)}"/>`}
     </div>`).join('')}</div>
   </div>`).join('');
+}
+function siteImageUrl(v){
+  const s=String(v??'').trim();
+  return /^(https:|data:image\/)/i.test(s)?s:'';
+}
+async function renderSiteImagesManager(){
+  const wrap=document.getElementById('siteImageEditor');
+  if(!wrap)return;
+  const data=await getSiteContent();
+  wrap.innerHTML=SITE_IMAGE_FIELDS.map(field=>{
+    const url=siteImageUrl(data[field.key]||SITE_CONTENT_DEFAULTS[field.key]);
+    return `<div class="content-group">
+      <div class="content-group-title">${esc(field.title)}</div>
+      <div style="font-size:.66rem;color:var(--muted);line-height:1.6;margin-bottom:8px">${esc(field.hint)}</div>
+      <img id="siteImagePreview_${escAttr(field.id)}" src="${escAttr(url)}" alt="" style="width:100%;height:170px;object-fit:cover;border-radius:4px;border:1px solid var(--border);background:var(--dark);margin-bottom:10px" onerror="this.style.display='none'"/>
+      <div class="fg"><label>Görsel URL</label><input type="text" id="siteImageUrl_${escAttr(field.id)}" value="${escAttr(url)}" placeholder="https://..."/></div>
+      <div class="fg"><label>Yeni Görsel Yükle</label><input type="file" accept="image/*" id="siteImageFile_${escAttr(field.id)}" onchange="handleSiteImageFile('${escAttr(field.id)}',this.files[0])"/></div>
+    </div>`;
+  }).join('');
+}
+function handleSiteImageFile(id,file){
+  if(!file)return;
+  if(!file.type.startsWith('image/')){toast('Sadece görsel dosyası seçin');return;}
+  if(file.size>MAX_IMAGE_SIZE){toast('Görsel 8 MB altında olmalı');return;}
+  siteImageFiles[id]=file;
+  const preview=document.getElementById('siteImagePreview_'+id);
+  if(preview){preview.src=URL.createObjectURL(file);preview.style.display='block';}
+  toast('Görsel seçildi. Kaydetmek için siteye yansıtın.');
+}
+async function uploadCloudinaryAsset(file,folder){
+  const fd=new FormData();
+  fd.append('file',file);
+  fd.append('upload_preset','bekadavet');
+  fd.append('folder',folder);
+  const res=await fetch('https://api.cloudinary.com/v1_1/dpeeodqlp/auto/upload',{method:'POST',body:fd});
+  const data=await res.json();
+  if(data.error)throw new Error(data.error.message);
+  return data.secure_url;
+}
+async function saveSiteImages(){
+  const btn=document.getElementById('btnSiteImagesSave');
+  const hasUpload=SITE_IMAGE_FIELDS.some(field=>siteImageFiles[field.id]);
+  if(hasUpload&&!(await ensureAdminAuth()))return;
+  btn.disabled=true;btn.textContent='Yükleniyor...';
+  try{
+    const fields={};
+    for(const field of SITE_IMAGE_FIELDS){
+      let url=document.getElementById('siteImageUrl_'+field.id)?.value.trim()||'';
+      if(siteImageFiles[field.id]){
+        btn.textContent=field.id==='hero'?'Hero görseli yükleniyor...':'Hakkımızda görseli yükleniyor...';
+        url=await uploadCloudinaryAsset(siteImageFiles[field.id],'site-assets');
+      }
+      if(url&&!siteImageUrl(url))throw new Error('Görsel URL https ile başlamalı');
+      fields[field.key]=url;
+    }
+    await setSiteContent(fields);
+    siteImageFiles={hero:null,about:null};
+    await renderSiteImagesManager();
+    toast('Ana görseller siteye yansıtıldı');
+  }catch(e){
+    toast(e?.message||'Görseller kaydedilemedi',4200);
+  }finally{
+    btn.disabled=false;btn.textContent='✓ Görselleri Siteye Yansıt';
+  }
 }
 async function renderReviewManager(){
   const wrap=document.getElementById('reviewEditor');
@@ -2195,7 +2277,7 @@ function printContract(){if(!document.getElementById('contractDoc').innerHTML)re
 
 async function initApp(){
   updateFBStatus();
-  await Promise.all([renderDashboard(),renderCRM(),renderMedia(),renderIntroSlides(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderServices(),renderReports(),updateBadges(),loadPushSettings(),renderSiteContentForm(),renderReviewManager()]);
+  await Promise.all([renderDashboard(),renderCRM(),renderMedia(),renderIntroSlides(),renderGallery(),renderMuz(),renderTeklifler(),renderPackages(),renderServices(),renderReports(),updateBadges(),loadPushSettings(),renderSiteContentForm(),renderSiteImagesManager(),renderReviewManager()]);
 }
 window._appReady=()=>{updateFBStatus();if(document.getElementById('app').classList.contains('visible'))initApp();};
 window.addEventListener('authready',()=>{if(window._authUser&&!document.getElementById('app').classList.contains('visible'))showApp();});
