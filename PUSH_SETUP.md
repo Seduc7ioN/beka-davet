@@ -40,7 +40,7 @@ CRON_SECRET=<uzun rastgele gizli anahtar>
 Manuel test için:
 
 ```sh
-curl "https://beka-davet.vercel.app/api/send-reminders?secret=<CRON_SECRET>"
+curl "https://bekadavet.com/api/send-reminders?secret=<CRON_SECRET>"
 ```
 
 ## 4. Firestore kurallarını deploy et

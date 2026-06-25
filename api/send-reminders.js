@@ -2,7 +2,8 @@ const {initializeApp, cert, getApps} = require('firebase-admin/app');
 const {getFirestore, FieldValue} = require('firebase-admin/firestore');
 const {getMessaging} = require('firebase-admin/messaging');
 
-const ADMIN_URL = 'https://beka-davet.vercel.app/admin.html';
+const SITE_URL = (process.env.SITE_URL || 'https://bekadavet.com').replace(/\/$/, '');
+const ADMIN_URL = `${SITE_URL}/admin.html`;
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || 'bekadavet-bfe6f';
 
 function parseServiceAccount() {
