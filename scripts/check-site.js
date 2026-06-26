@@ -90,8 +90,8 @@ if (/<img[^>]+src="data:image/i.test(index)) fail('HTML img içinde data URI kal
 else pass('HTML img görselleri dosya URL');
 
 const sw = read('sw.js');
-if (!/beka-davet-v17/.test(sw)) fail('PWA cache versiyonu v17 değil');
-else pass('PWA cache v17');
+if (!/beka-davet-v18/.test(sw)) fail('PWA cache versiyonu v18 değil');
+else pass('PWA cache v18');
 
 const vercel = json('vercel.json');
 const headerRules = JSON.stringify(vercel.headers || []);

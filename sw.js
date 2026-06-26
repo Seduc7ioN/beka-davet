@@ -1,4 +1,4 @@
-const CACHE = 'beka-davet-v17';
+const CACHE = 'beka-davet-v18';
 const ASSETS = [
   '/',
   '/index.html',
@@ -50,9 +50,16 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
+      .then(() => clients.matchAll({type: 'window', includeUncontrolled: true}))
+      .then(list => {
+        return Promise.all(list.map(client => {
+          const url = new URL(client.url);
+          if (url.pathname.endsWith('/admin.html')) return Promise.resolve();
+          return client.navigate(client.url).catch(() => {});
+        }));
+      })
   );
-  self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
