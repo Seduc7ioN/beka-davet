@@ -874,7 +874,10 @@ try {
   try {
     const muzSnap = await getDocs(query(collection(db,'music'), orderBy('addedAt','desc'), limit(20)));
     const muzList = muzSnap.docs.map(d=>({id:d.id,...d.data()}));
-    if(muzList.length > 0) window._fbMusicList = muzList;
+    if(muzList.length > 0) {
+      window._fbMusicList = muzList;
+      window.dispatchEvent(new CustomEvent('fbmusicready'));
+    }
   } catch(e) {}
 
   // Paketleri çek
@@ -1399,6 +1402,8 @@ function buildPackages(){
 
 let _preloadedAudio = null;
 
+window.addEventListener('fbmusicready', () => preloadMusic());
+
 function preloadMusic() {
   let mData = JSON.parse(localStorage.getItem('bk_music') || 'null');
   if (!mData && window._fbMusicList && window._fbMusicList.length > 0) {
@@ -1450,13 +1455,28 @@ function buildIntro(){
 function startIntro(){
   document.getElementById('iPlay').classList.add('gone');
 
-  // music — preloaded gelmezse anlık yükle
-  if (_preloadedAudio) {
+  // music
+  function startSlides() {
+    setTimeout(()=>document.getElementById('iTitle').classList.add('on'),400);
+    setTimeout(()=>document.getElementById('iSub').classList.add('on'),700);
+    showSlide(0);
+  }
+  if (_preloadedAudio && _preloadedAudio.readyState >= 3) {
     iAudio = _preloadedAudio;
     iAudio.volume = 0.7; iAudio.loop = true;
     iAudio.play().catch(() => {});
     attachPlayer(iAudio, _preloadedAudio._name || 'Arka Plan Müziği');
     _preloadedAudio = null;
+    startSlides();
+  } else if (_preloadedAudio) {
+    iAudio = _preloadedAudio;
+    iAudio.volume = 0.7; iAudio.loop = true;
+    iAudio.addEventListener('canplaythrough', () => {
+      iAudio.play().catch(() => {});
+      attachPlayer(iAudio, _preloadedAudio._name || 'Arka Plan Müziği');
+    }, { once: true });
+    _preloadedAudio = null;
+    startSlides();
   } else {
     let mData = JSON.parse(localStorage.getItem('bk_music') || 'null');
     if (!mData && window._fbMusicList && window._fbMusicList.length > 0) {
@@ -1466,14 +1486,14 @@ function startIntro(){
     if (mData) {
       iAudio = new Audio(mData.url);
       iAudio.volume = 0.7; iAudio.loop = true;
-      iAudio.play().catch(() => {});
-      attachPlayer(iAudio, mData.name);
+      iAudio.addEventListener('canplaythrough', () => {
+        iAudio.play().catch(() => {});
+        attachPlayer(iAudio, mData.name);
+      }, { once: true });
+      iAudio.load();
     }
+    startSlides();
   }
-  // text appear
-  setTimeout(()=>document.getElementById('iTitle').classList.add('on'),400);
-  setTimeout(()=>document.getElementById('iSub').classList.add('on'),700);
-  showSlide(0);
 }
 
 function showSlide(idx){
