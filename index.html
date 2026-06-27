@@ -1397,6 +1397,22 @@ function buildPackages(){
     </div>`).join('');
 }
 
+let _preloadedAudio = null;
+
+function preloadMusic() {
+  let mData = JSON.parse(localStorage.getItem('bk_music') || 'null');
+  if (!mData && window._fbMusicList && window._fbMusicList.length > 0) {
+    const first = window._fbMusicList[0];
+    mData = { id: first.id, name: first.name, url: first.url };
+  }
+  if (mData && mData.url) {
+    _preloadedAudio = new Audio(mData.url);
+    _preloadedAudio.preload = 'auto';
+    _preloadedAudio.load();
+    _preloadedAudio._name = mData.name;
+  }
+}
+
 function buildIntro(){
   const slides = getAllSlides();
   const container = document.getElementById('iSlides');
@@ -1434,19 +1450,25 @@ function buildIntro(){
 function startIntro(){
   document.getElementById('iPlay').classList.add('gone');
 
-  // music
-  // Firebase müzik listesinden aktif olanı bul, yoksa localStorage
-  let mData = JSON.parse(localStorage.getItem('bk_music')||'null');
-  if(!mData && window._fbMusicList && window._fbMusicList.length > 0){
-    // İlk müziği otomatik kullan
-    const first = window._fbMusicList[0];
-    mData = {id: first.id, name: first.name, url: first.url};
-  }
-  if(mData){
-    iAudio = new Audio(mData.url);
-    iAudio.volume=0.7; iAudio.loop=true;
-    iAudio.play().catch(()=>{});
-    attachPlayer(iAudio, mData.name);
+  // music — preloaded gelmezse anlık yükle
+  if (_preloadedAudio) {
+    iAudio = _preloadedAudio;
+    iAudio.volume = 0.7; iAudio.loop = true;
+    iAudio.play().catch(() => {});
+    attachPlayer(iAudio, _preloadedAudio._name || 'Arka Plan Müziği');
+    _preloadedAudio = null;
+  } else {
+    let mData = JSON.parse(localStorage.getItem('bk_music') || 'null');
+    if (!mData && window._fbMusicList && window._fbMusicList.length > 0) {
+      const first = window._fbMusicList[0];
+      mData = { id: first.id, name: first.name, url: first.url };
+    }
+    if (mData) {
+      iAudio = new Audio(mData.url);
+      iAudio.volume = 0.7; iAudio.loop = true;
+      iAudio.play().catch(() => {});
+      attachPlayer(iAudio, mData.name);
+    }
   }
   // text appear
   setTimeout(()=>document.getElementById('iTitle').classList.add('on'),400);
@@ -1754,6 +1776,7 @@ async function sendForm(){
 // Yönetim paneli footer'dan erişilebilir
 
 // ══ INIT ══
+preloadMusic();
 buildIntro();
 buildBands();
 buildServices();
