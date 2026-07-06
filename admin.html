@@ -696,7 +696,39 @@ body{
         <button class="btn btn-outline" onclick="addReviewRow()" style="margin-top:8px">+ Yorum Ekle</button>
         <button class="btn btn-gold" onclick="saveReviews()" id="btnReviewsSave" style="margin-top:8px">✓ Yorumları Siteye Yansıt</button>
       </div>
-      <!-- Teklif talepleri -->
+      <div class="card">
+        <div class="card-title">Rapor ve Dışa Aktarım</div>
+        <div class="stat-row" style="margin-bottom:12px">
+          <div class="stat-card"><span class="stat-lbl">Bu Ay Teklif</span><span class="stat-val" id="rMonthTeklif">0</span><span class="stat-sub">Talep</span></div>
+          <div class="stat-card"><span class="stat-lbl">Onay Oranı</span><span class="stat-val" id="rConv">0%</span><span class="stat-sub">Tekliflerden</span></div>
+        </div>
+        <div class="fg-row">
+          <button class="btn btn-outline" onclick="exportData('customers')">Müşteri CSV</button>
+          <button class="btn btn-outline" onclick="exportData('teklifler')">Teklif CSV</button>
+        </div>
+        <button class="btn btn-outline" onclick="exportData('ajanda')" style="margin-top:8px">Ajanda CSV</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Arka Plan Bildirimleri</div>
+        <div style="font-size:.75rem;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          PWA kapalıyken bildirim alabilmek için Firebase Cloud Messaging VAPID anahtarı gerekir. Anahtarı Firebase Console &gt; Project settings &gt; Cloud Messaging bölümünden oluşturup buraya yapıştırın.
+        </div>
+        <div class="fg"><label>FCM VAPID Anahtarı</label><input type="text" id="pushVapidKey" placeholder="BExxx..."/></div>
+        <button class="btn btn-gold" onclick="savePushSettings()">Bildirim Ayarını Kaydet</button>
+        <button class="btn btn-outline" onclick="enableAdminNotifications()" style="margin-top:8px">Bu Cihazda Bildirimleri Aç</button>
+        <div id="pushStatus" style="font-size:.68rem;color:var(--muted);line-height:1.6;margin-top:10px">Bildirim durumu kontrol ediliyor...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Hesap Güvenliği</div>
+        <div style="font-size:.75rem;color:var(--muted);line-height:1.7">
+          Admin şifresi Firebase Authentication üzerinden yönetilir. Şifre değiştirmek için Firebase Console &gt; Authentication &gt; Users bölümünü kullanın.
+        </div>
+      </div>
+      <button class="btn btn-red" onclick="doLogout()" style="margin-top:4px">Çıkış Yap</button>
+    </div>
+
+    <!-- PANEL: YÖNETİM -->
+    <div class="panel" id="p-yonetim">
       <div class="card">
         <div class="card-title">Teklif Talepleri</div>
         <div class="chips" style="margin-bottom:10px">
@@ -711,7 +743,6 @@ body{
         <div id="teklifList"></div>
         <div class="empty-state" id="teklifEmpty" style="display:none"><span class="empty-icon">📭</span><span class="empty-txt">Teklif talebi yok</span></div>
       </div>
-      <!-- Müzik -->
       <div class="card">
         <div class="card-title">Müzik Yönetimi</div>
         <div class="drop-area" id="muzDrop">
@@ -747,37 +778,6 @@ body{
         <div id="svcList" style="margin-top:12px"></div>
         <div class="empty-state" id="svcEmpty" style="display:none"><span class="empty-icon">✦</span><span class="empty-txt">Özel hizmet yok; varsayılan hizmetler gösteriliyor</span></div>
       </div>
-      <div class="card">
-        <div class="card-title">Rapor ve Dışa Aktarım</div>
-        <div class="stat-row" style="margin-bottom:12px">
-          <div class="stat-card"><span class="stat-lbl">Bu Ay Teklif</span><span class="stat-val" id="rMonthTeklif">0</span><span class="stat-sub">Talep</span></div>
-          <div class="stat-card"><span class="stat-lbl">Onay Oranı</span><span class="stat-val" id="rConv">0%</span><span class="stat-sub">Tekliflerden</span></div>
-        </div>
-        <div class="fg-row">
-          <button class="btn btn-outline" onclick="exportData('customers')">Müşteri CSV</button>
-          <button class="btn btn-outline" onclick="exportData('teklifler')">Teklif CSV</button>
-        </div>
-        <button class="btn btn-outline" onclick="exportData('ajanda')" style="margin-top:8px">Ajanda CSV</button>
-      </div>
-      <div class="card">
-        <div class="card-title">Arka Plan Bildirimleri</div>
-        <div style="font-size:.75rem;color:var(--muted);line-height:1.7;margin-bottom:12px">
-          PWA kapalıyken bildirim alabilmek için Firebase Cloud Messaging VAPID anahtarı gerekir. Anahtarı Firebase Console &gt; Project settings &gt; Cloud Messaging bölümünden oluşturup buraya yapıştırın.
-        </div>
-        <div class="fg"><label>FCM VAPID Anahtarı</label><input type="text" id="pushVapidKey" placeholder="BExxx..."/></div>
-        <button class="btn btn-gold" onclick="savePushSettings()">Bildirim Ayarını Kaydet</button>
-        <button class="btn btn-outline" onclick="enableAdminNotifications()" style="margin-top:8px">Bu Cihazda Bildirimleri Aç</button>
-        <div id="pushStatus" style="font-size:.68rem;color:var(--muted);line-height:1.6;margin-top:10px">Bildirim durumu kontrol ediliyor...</div>
-      </div>
-      <!-- Hesap -->
-      <div class="card">
-        <div class="card-title">Hesap Güvenliği</div>
-        <div style="font-size:.75rem;color:var(--muted);line-height:1.7">
-          Admin şifresi Firebase Authentication üzerinden yönetilir. Şifre değiştirmek için Firebase Console &gt; Authentication &gt; Users bölümünü kullanın.
-        </div>
-      </div>
-      <!-- Çıkış -->
-      <button class="btn btn-red" onclick="doLogout()" style="margin-top:4px">Çıkış Yap</button>
     </div>
 
   </div><!-- /content-area -->
@@ -802,10 +802,14 @@ body{
       <span class="tab-label">Ajanda</span>
       <span class="tab-badge" id="badgeAjanda" style="display:none">0</span>
     </div>
+    <div class="tab-item" data-tab="yonetim" onclick="goTab('yonetim',this)">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">Yönetim</span>
+      <span class="tab-badge" id="badgeTekliflerTab" style="display:none">0</span>
+    </div>
     <div class="tab-item" data-tab="ayarlar" onclick="goTab('ayarlar',this)">
       <span class="tab-icon">⚙️</span>
       <span class="tab-label">Ayarlar</span>
-      <span class="tab-badge" id="badgeTekliflerTab" style="display:none">0</span>
     </div>
   </div>
 
@@ -1058,9 +1062,10 @@ function goTab(name,el){
   if(el)el.classList.add('active');
   document.getElementById('contentArea').scrollTop=0;
   if(name==='musteriler')renderCRM();
-  if(name==='vitrin'){renderMedia();renderIntroSlides();renderGallery();renderMuz();}
+  if(name==='vitrin'){renderMedia();renderIntroSlides();renderGallery();}
   if(name==='ajanda')initAjanda();
-  if(name==='ayarlar'){renderSiteContentForm();renderSiteImagesManager();renderReviewManager();renderTeklifler();renderMuz();renderPackages();renderServices();renderReports();loadPushSettings();}
+  if(name==='yonetim'){renderTeklifler();renderMuz();renderPackages();renderServices();}
+  if(name==='ayarlar'){renderSiteContentForm();renderSiteImagesManager();renderReviewManager();renderReports();loadPushSettings();}
   if(name==='home')renderDashboard();
 }
 
