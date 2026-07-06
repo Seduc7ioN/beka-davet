@@ -511,7 +511,7 @@ nav.solid .hamburger span{background:#3f2f26}
 .stat-item:last-child{border-right:none}
 .stat-item::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:2px;background:linear-gradient(to right,var(--rose),var(--gold));transition:width .5s}
 .stat-item:hover::after{width:50%}
-.stat-num{font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:700;color:transparent;background:linear-gradient(135deg,#d4a85a,#c17366);-webkit-background-clip:text;background-clip:text;display:block;line-height:1}
+.stat-num{font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:700;color:#C9A86A;display:block;line-height:1}
 .stat-lbl{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-top:7px;display:block;font-weight:500}
 
 /* ══════════════════════════════
@@ -658,7 +658,7 @@ nav.solid .hamburger span{background:#3f2f26}
   font-size:.9rem;transition:all .3s;
 }
 .c-lbl{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--rose2);margin-bottom:5px;font-weight:600}
-.c-val{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:#1f1510;font-weight:600}
+.c-val{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:#FFFFFF;font-weight:600}
 .abt-sig{font-size:2.4rem;font-weight:600;color:var(--rose)}
 .map-card{
   margin-top:24px;border:1px solid rgba(200,132,122,.18);
@@ -743,7 +743,7 @@ nav.solid .nav-cta:hover{background:#C9A86A;color:#0D0D0D}
 .stats-bar,#vitrin,#sss,#hizmetler,#paketler,#hakkimizda .abt-body,#iletisim{background:#0D0D0D}
 #surec{background:#111}
 .s-title,.svc-ttl,.proc-ttl,.c-val,.map-title{color:#FFFFFF;text-shadow:none;font-weight:700}
-.s-sub,.svc-txt,.proc-txt,.abt-p,.ft-desc{color:rgba(255,255,255,.75)}
+.s-sub,.svc-txt,.proc-txt,.abt-p,.ft-desc{color:rgba(255,255,255,.90)}
 .ft-col-lbl{color:#C9A86A;font-weight:700;font-size:.64rem}
 .s-tag,.c-lbl{color:#C9A86A;font-weight:700}
 .s-tag::before,.s-tag::after{background:#C9A86A;opacity:.5}
@@ -762,9 +762,9 @@ nav.solid .nav-cta:hover{background:#C9A86A;color:#0D0D0D}
 .svc-card,.review-card,.map-card{background:rgba(255,255,255,.04);border:1px solid rgba(201,168,106,.1);border-radius:16px;box-shadow:0 22px 60px rgba(0,0,0,.2)}
 .svc-card:hover{background:rgba(255,255,255,.06)}
 .svc-n{color:rgba(201,168,106,.06);font-size:5rem;top:22px;right:26px;font-weight:600}
-.svc-ul li{color:rgba(255,255,255,.6);border-color:rgba(201,168,106,.08)}
-.svc-card:hover .svc-ul li{color:rgba(255,255,255,.75)}
-.review-text{color:rgba(255,255,255,.72)}
+.svc-ul li{color:rgba(255,255,255,.85);border-color:rgba(201,168,106,.08)}
+.svc-card:hover .svc-ul li{color:rgba(255,255,255,.95)}
+.review-text{color:rgba(255,255,255,.85)}
 .review-name{color:#FFFFFF;font-weight:700}
 .review-meta{color:rgba(201,168,106,.7)}
 .review-card::before{color:rgba(201,168,106,.05)}
@@ -855,18 +855,18 @@ footer{background:#0D0D0D;border-top:1px solid rgba(201,168,106,.1)}
 
 /* ── Hizmet kartları ── */
 .svc-card{padding:56px 44px;transition:all .45s cubic-bezier(.4,0,.2,1)}
-.svc-card:hover{transform:translateY(-6px);box-shadow:0 32px 80px rgba(89,61,38,.14);background:rgba(255,255,255,.88)}
+.svc-card:hover{transform:translateY(-6px);box-shadow:0 32px 80px rgba(0,0,0,.3);background:rgba(255,255,255,.06)}
 .svc-ttl{font-size:1.8rem;font-weight:500;margin-bottom:12px;letter-spacing:.01em}
-.svc-txt{font-size:.9rem;line-height:1.9;color:rgba(31,21,16,.9)}
-.svc-ul li{font-size:.8rem;color:rgba(31,21,16,.82);padding:6px 0;transition:all .3s}
+.svc-txt{font-size:.9rem;line-height:1.9;color:rgba(255,255,255,.90)}
+.svc-ul li{font-size:.8rem;color:rgba(255,255,255,.85);padding:6px 0;transition:all .3s}
 .svc-n{font-size:5.5rem;top:22px;right:26px;color:rgba(191,155,94,.14);font-weight:600}
 .svc-line{width:32px;height:2.5px;margin-bottom:24px;border-radius:2px}
 .svc-card:hover .svc-line{width:56px}
 
 /* ── Vitrin band kartları ── */
 .band-item{border-radius:14px}
-.band-item img{filter:saturate(.9) brightness(1.03);transition:transform .8s cubic-bezier(.4,0,.2,1),filter .6s ease}
-.band-item:hover img{filter:saturate(1.05) brightness(1.08);transform:scale(1.06)}
+.band-item img{filter:saturate(.9) brightness(.85);transition:transform .8s cubic-bezier(.4,0,.2,1),filter .6s ease}
+.band-item:hover img{filter:saturate(1.05) brightness(1);transform:scale(1.06)}
 .band-glass{border-radius:inherit}
 
 /* ── Review kartları ── */
@@ -876,7 +876,7 @@ footer{background:#0D0D0D;border-top:1px solid rgba(201,168,106,.1)}
 
 /* ── Süreç adımları ── */
 .proc-num{width:84px;height:84px;font-size:1.6rem;font-weight:600;border-radius:50%;transition:all .5s cubic-bezier(.4,0,.2,1)}
-.proc-step:hover .proc-num{transform:scale(1.08);box-shadow:0 20px 50px rgba(192,123,112,.35)}
+.proc-step:hover .proc-num{transform:scale(1.08);box-shadow:0 20px 50px rgba(201,168,106,.2)}
 .proc-ttl{font-size:1.4rem;font-weight:700}
 .proc-txt{font-size:.82rem;line-height:1.85;font-weight:450}
 .review-name{font-size:1.35rem;font-weight:600}
@@ -884,9 +884,9 @@ footer{background:#0D0D0D;border-top:1px solid rgba(201,168,106,.1)}
 
 /* ── Hakkımızda ── */
 .abt-body{padding:110px 80px}
-.abt-p{font-size:.88rem;line-height:2;color:rgba(31,21,16,.88);margin-bottom:20px}
+.abt-p{font-size:.88rem;line-height:2;color:rgba(255,255,255,.90);margin-bottom:20px}
 .abt-sig{font-size:2.4rem;margin-top:16px;font-weight:600}
-.abt-img img{filter:saturize(.85) brightness(1.03)}
+.abt-img img{filter:saturate(.8) brightness(.85)}
 
 /* ── İletişim formu ── */
 .fg input,.fg select,.fg textarea{
