@@ -1333,10 +1333,7 @@ try {
       <div class="fg-row"><div class="fg"><label>Ad Soyad</label><input type="text" placeholder="Adınız"/></div><div class="fg"><label>Telefon</label><input type="tel" placeholder="05XX XXX XX XX"/></div></div>
       <div class="fg"><label>Organizasyon Türü</label><select><option value="">Seçiniz...</option><option>Nişan & Söz</option><option>Kına Gecesi</option><option>Doğum Günü</option><option>Özel Etkinlik</option></select></div>
       <div class="fg"><label>Etkinlik Tarihi</label><input type="date"/></div>
-      <div class="fg-row">
-        <div class="fg"><label>Bütçe Aralığı</label><select id="fBudget"><option value="">Seçiniz...</option><option>₺10.000 - ₺20.000</option><option>₺20.000 - ₺40.000</option><option>₺40.000+</option><option>Net değil</option></select></div>
-        <div class="fg"><label>Bizi Nereden Duydunuz?</label><select id="fSource"><option value="">Seçiniz...</option><option>Instagram</option><option>WhatsApp</option><option>Tavsiye</option><option>Google</option><option>Diğer</option></select></div>
-      </div>
+      <div class="fg"><label>Bizi Nereden Duydunuz?</label><select id="fSource"><option value="">Seçiniz...</option><option>Instagram</option><option>WhatsApp</option><option>Tavsiye</option><option>Google</option><option>Diğer</option></select></div>
       <div class="fg"><label>Mesaj</label><textarea placeholder="Hayalinizdeki organizasyon hakkında bize anlatın..."></textarea></div>
       <button class="f-btn" onclick="sendForm()">Teklif Talep Et</button>
       <div class="f-ok" id="fOk">✓ Mesajınız alındı. En kısa sürede iletişime geçeceğiz.</div>
@@ -1549,9 +1546,8 @@ function applySiteContent(){
   setAttr('#iletisim input[type=text]','placeholder','formNamePlaceholder');
   setClosestLabel('#iletisim input[type=tel]','formPhoneLabel');
   setAttr('#iletisim input[type=tel]','placeholder','formPhonePlaceholder');
-  setClosestLabel('#iletisim select:not(#fBudget):not(#fSource)','formTypeLabel');
+  setClosestLabel('#iletisim select:not(#fSource)','formTypeLabel');
   setClosestLabel('#iletisim input[type=date]','formDateLabel');
-  setClosestLabel('#fBudget','formBudgetLabel');
   setClosestLabel('#fSource','formSourceLabel');
   setClosestLabel('#iletisim textarea','formMessageLabel');
   setAttr('#iletisim textarea','placeholder','formMessagePlaceholder');
@@ -2034,7 +2030,6 @@ async function sendForm(){
   const tel   = document.querySelector('#iletisim input[type=tel]')?.value.trim();
   const tur   = document.querySelector('#iletisim select')?.value;
   const tarih = document.querySelector('#iletisim input[type=date]')?.value;
-  const butce = document.getElementById('fBudget')?.value || '';
   const kaynak = document.getElementById('fSource')?.value || '';
   const mesaj = document.querySelector('#iletisim textarea')?.value.trim();
 
@@ -2046,7 +2041,7 @@ async function sendForm(){
 
   b.textContent='Gönderiliyor...'; b.disabled=true;
 
-  const veri = { ad:ad.slice(0,120), tel:tel.slice(0,32), tur:(tur||'').slice(0,80), tarih, butce:butce.slice(0,80), kaynak:kaynak.slice(0,80), mesaj:(mesaj||'').slice(0,1000), tarihEklendi: new Date().toISOString(), durum:'yeni' };
+  const veri = { ad:ad.slice(0,120), tel:tel.slice(0,32), tur:(tur||'').slice(0,80), tarih, kaynak:kaynak.slice(0,80), mesaj:(mesaj||'').slice(0,1000), tarihEklendi: new Date().toISOString(), durum:'yeni' };
 
   try{
     const res=await fetch('/api/create-offer',{

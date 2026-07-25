@@ -72,6 +72,8 @@ else pass('admin ana görsel yönetimi var');
 const index = read('index.html');
 if (!index.includes('/api/create-offer')) fail('teklif formu güvenli API kullanmıyor');
 else pass('teklif formu /api/create-offer kullanıyor');
+if (index.includes('id="fBudget"') || index.includes('Bütçe Aralığı</label>')) fail('public teklif formunda bütçe aralığı kaldı');
+else pass('public teklif formunda bütçe aralığı yok');
 if (!index.includes('function reviewsFromSiteContent') || !index.includes('content.reviewsJson')) fail('site Google yorum listesini okumuyor');
 else pass('site Google yorum listesini okuyor');
 if (!index.includes('Number(r.rating)===5')) fail('site yorum vitrini 5 yıldız filtresi eksik');
@@ -90,8 +92,8 @@ if (/<img[^>]+src="data:image/i.test(index)) fail('HTML img içinde data URI kal
 else pass('HTML img görselleri dosya URL');
 
 const sw = read('sw.js');
-if (!/beka-davet-v18/.test(sw)) fail('PWA cache versiyonu v18 değil');
-else pass('PWA cache v18');
+if (!/beka-davet-v19/.test(sw)) fail('PWA cache versiyonu v19 değil');
+else pass('PWA cache v19');
 
 const vercel = json('vercel.json');
 const headerRules = JSON.stringify(vercel.headers || []);
